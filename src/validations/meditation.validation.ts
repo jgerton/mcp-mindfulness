@@ -9,7 +9,8 @@ export const createMeditationSchema = z.object({
   category: z.enum(['mindfulness', 'breathing', 'body-scan', 'loving-kindness', 'other']),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   tags: z.array(z.string()).optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  authorId: z.string().optional()
 });
 
 export const updateMeditationSchema = createMeditationSchema.partial();

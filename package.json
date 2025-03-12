@@ -27,6 +27,7 @@
     "@types/mongoose": "^5.11.97",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.13.10",
+    "@types/socket.io-client": "^3.0.0",
     "@types/supertest": "^6.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -37,6 +38,7 @@
     "mongodb-memory-server": "^10.1.4",
     "mongoose": "^8.12.1",
     "morgan": "^1.10.0",
+    "socket.io-client": "^4.8.1",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.6",
     "ts-node-dev": "^2.0.0",
@@ -45,8 +47,10 @@
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/socket.io": "^3.0.2",
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.1",
     "zod": "^3.24.2"
   }
 }

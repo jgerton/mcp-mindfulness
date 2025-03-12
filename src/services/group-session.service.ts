@@ -3,6 +3,7 @@ import { GroupSession, IGroupSession, IParticipant } from '../models/group-sessi
 import { FriendService } from './friend.service';
 import { User } from '../models/user.model';
 import { AchievementService } from './achievement.service';
+import { ChatService } from './chat.service';
 
 export class GroupSessionService {
   public static async createSession(
@@ -170,8 +171,22 @@ export class GroupSessionService {
       throw new Error('Participant not found or already left/completed');
     }
 
+    // Get participant's username for the message
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
     participant.status = 'left';
     await session.save();
+
+    // Add system message about participant leaving
+    await ChatService.addMessage(
+      sessionId,
+      userId,
+      `${user.username} has left the session`,
+      'system'
+    );
 
     return session;
   }
@@ -189,6 +204,14 @@ export class GroupSessionService {
 
     session.status = 'cancelled';
     await session.save();
+
+    // Add system message about session cancellation
+    await ChatService.addMessage(
+      sessionId,
+      hostId,
+      'Session has been cancelled by the host',
+      'system'
+    );
 
     return session;
   }
@@ -236,5 +259,29 @@ export class GroupSessionService {
       ...session,
       hostId: session.hostId._id || session.hostId
     }));
+  }
+
+  static async endSession(sessionId: string, hostId: string): Promise<IGroupSession> {
+    const session = await GroupSession.findById(sessionId);
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (!session.hostId.equals(hostId)) {
+      throw new Error('Only the host can end the session');
+    }
+
+    if (session.status !== 'in_progress') {
+      throw new Error('Session must be in progress to end it');
+    }
+
+    session.status = 'completed';
+    session.endTime = new Date();
+    await session.save();
+
+    // Add system message about session ending
+    await ChatService.addSystemMessage(sessionId, 'Session ended by the host');
+
+    return session;
   }
 } 

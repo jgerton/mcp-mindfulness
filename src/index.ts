@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import { app, httpServer } from './app';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -54,7 +55,13 @@ const mongooseOptions = {
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mindfulness', mongooseOptions)
   .then(() => {
-    console.log('Successfully connected to MongoDB Atlas');
+    console.log('Successfully connected to MongoDB');
+    
+    // Start the server
+    const PORT = process.env.PORT || 3000;
+    httpServer.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
   })
   .catch((error) => {
     console.error('MongoDB connection error:', error);
@@ -79,10 +86,4 @@ process.on('SIGINT', async () => {
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something broke!' });
-});
-
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
 }); 

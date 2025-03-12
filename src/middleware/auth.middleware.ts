@@ -14,17 +14,18 @@ declare global {
   }
 }
 
-export const authenticateToken = async (
+export const authenticateToken = (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void | Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
+      res.status(401).json({ message: 'Authentication required' });
+      return;
     }
 
     const decoded = jwt.verify(
@@ -32,15 +33,22 @@ export const authenticateToken = async (
       process.env.JWT_SECRET || 'your-secret-key'
     ) as JwtPayload;
 
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
+    User.findById(decoded.userId)
+      .then(user => {
+        if (!user) {
+          res.status(401).json({ message: 'User not found' });
+          return;
+        }
 
-    req.user = user;
-    next();
+        req.user = user;
+        next();
+      })
+      .catch(error => {
+        console.error('Authentication error:', error);
+        res.status(401).json({ message: 'Invalid token' });
+      });
   } catch (error) {
     console.error('Authentication error:', error);
-    return res.status(401).json({ message: 'Invalid token' });
+    res.status(401).json({ message: 'Invalid token' });
   }
 }; 

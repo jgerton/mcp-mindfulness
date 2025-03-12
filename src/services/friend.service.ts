@@ -170,4 +170,17 @@ export class FriendService {
 
     return !!friendship;
   }
+
+  public static async rejectFriendRequest(userId: string, requestId: string): Promise<void> {
+    const request = await Friend.findById(requestId);
+    if (!request || request.status !== 'pending') {
+      throw new Error('Friend request not found');
+    }
+
+    if (request.recipientId.toString() !== userId) {
+      throw new Error('Not authorized to reject this request');
+    }
+
+    await Friend.findByIdAndDelete(requestId);
+  }
 } 

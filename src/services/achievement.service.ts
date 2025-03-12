@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Achievement } from '../models/achievement.model';
 import { IMeditationSession } from '../models/meditation-session.model';
 import { IGroupSession } from '../models/group-session.model';
+import { Friend } from '../models/friend.model';
 
 export interface IAchievement {
   userId: mongoose.Types.ObjectId;
@@ -19,7 +20,8 @@ type AchievementType =
   | 'community_pillar'
   | 'group_guide'
   | 'week_warrior'
-  | 'mindful_month';
+  | 'mindful_month'
+  | 'social_butterfly';
 
 export class AchievementService {
   private static readonly ACHIEVEMENT_TARGETS: Record<AchievementType, number> = {
@@ -30,7 +32,8 @@ export class AchievementService {
     community_pillar: 10,
     group_guide: 5,
     week_warrior: 7,
-    mindful_month: 30
+    mindful_month: 30,
+    social_butterfly: 5
   };
 
   private static readonly ACHIEVEMENT_DETAILS: Record<AchievementType, { title: string; description: string; points: number }> = {
@@ -56,23 +59,28 @@ export class AchievementService {
     },
     community_pillar: {
       title: 'Community Pillar',
-      description: 'Complete 10 group meditation sessions',
-      points: 200
+      description: 'Participate in 10 group meditation sessions',
+      points: 300
     },
     group_guide: {
       title: 'Group Guide',
-      description: 'Guide 5 group meditation sessions',
-      points: 150
+      description: 'Host 5 group meditation sessions',
+      points: 250
     },
     week_warrior: {
       title: 'Week Warrior',
-      description: 'Complete meditation sessions for 7 consecutive days',
-      points: 300
+      description: 'Meditate for 7 consecutive days',
+      points: 200
     },
     mindful_month: {
       title: 'Mindful Month',
-      description: 'Complete meditation sessions for 30 consecutive days',
+      description: 'Meditate for 30 consecutive days',
       points: 500
+    },
+    social_butterfly: {
+      title: 'Social Butterfly',
+      description: 'Make 5 friends in the community',
+      points: 150
     }
   };
 
@@ -181,6 +189,43 @@ export class AchievementService {
     achievement.progress = achievement.target;
     achievement.completed = true;
     achievement.completedAt = new Date();
+    await achievement.save();
+  }
+
+  public static async processFriendAchievements(userId: string): Promise<void> {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
+    // Count accepted friend requests
+    const friendCount = await Friend.countDocuments({
+      $or: [
+        { requesterId: userObjectId, status: 'accepted' },
+        { recipientId: userObjectId, status: 'accepted' }
+      ]
+    });
+
+    // Get or create the social butterfly achievement
+    let achievement = await Achievement.findOne({
+      userId: userObjectId,
+      type: 'social_butterfly'
+    });
+
+    if (!achievement) {
+      achievement = new Achievement({
+        userId: userObjectId,
+        type: 'social_butterfly',
+        progress: 0,
+        target: this.ACHIEVEMENT_TARGETS.social_butterfly
+      });
+    }
+
+    // Update progress
+    achievement.progress = friendCount;
+
+    // Check if achievement is completed
+    if (achievement.progress >= achievement.target && !achievement.completedAt) {
+      achievement.completedAt = new Date();
+    }
+
     await achievement.save();
   }
 }

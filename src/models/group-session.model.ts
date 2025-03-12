@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, Types, Document } from 'mongoose';
 
 export interface IParticipantSessionData {
   durationCompleted: number;
@@ -15,9 +15,9 @@ export interface IParticipant {
   sessionData?: IParticipantSessionData;
 }
 
-export interface IGroupSession {
-  hostId: mongoose.Types.ObjectId;
-  meditationId: mongoose.Types.ObjectId;
+export interface IGroupSession extends Document {
+  hostId: Types.ObjectId;
+  meditationId: Types.ObjectId;
   title: string;
   description?: string;
   scheduledTime: Date;
@@ -27,10 +27,12 @@ export interface IGroupSession {
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
   isPrivate: boolean;
   allowedParticipants?: mongoose.Types.ObjectId[];
+  startTime?: Date;
+  endTime?: Date;
   createdAt: Date;
   updatedAt: Date;
   isFull(): boolean;
-  canUserJoin(userId: mongoose.Types.ObjectId): boolean;
+  canUserJoin(userId: Types.ObjectId): boolean;
 }
 
 const participantSchema = new mongoose.Schema<IParticipant>({
@@ -61,7 +63,9 @@ const groupSessionSchema = new mongoose.Schema<IGroupSession>({
     default: 'scheduled'
   },
   isPrivate: { type: Boolean, default: false },
-  allowedParticipants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+  allowedParticipants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  startTime: { type: Date },
+  endTime: { type: Date },
 }, {
   timestamps: true
 });
@@ -71,10 +75,10 @@ groupSessionSchema.methods.isFull = function(): boolean {
   return activeParticipants >= this.maxParticipants;
 };
 
-groupSessionSchema.methods.canUserJoin = function(userId: mongoose.Types.ObjectId): boolean {
+groupSessionSchema.methods.canUserJoin = function(userId: Types.ObjectId): boolean {
   if (this.status !== 'scheduled' && this.status !== 'in_progress') return false;
   if (this.participants.some((p: IParticipant) => p.userId.equals(userId) && p.status === 'joined')) return false;
-  if (this.isPrivate && !this.allowedParticipants?.some((id: mongoose.Types.ObjectId) => id.equals(userId))) return false;
+  if (this.isPrivate && !this.allowedParticipants?.some((id: Types.ObjectId) => id.equals(userId))) return false;
   const activeParticipants = this.participants.filter((p: IParticipant) => p.status === 'joined').length;
   return activeParticipants < this.maxParticipants;
 };

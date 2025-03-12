@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 
 export class MeditationController {
   // Create a new meditation
-  async create(req: Request<{}, {}, CreateMeditationInput>, res: Response) {
+  static async create(req: Request<{}, {}, CreateMeditationInput>, res: Response) {
     try {
       const meditationData = req.body;
       if (req.user) {
@@ -21,7 +21,7 @@ export class MeditationController {
   }
 
   // Get all meditations with filtering and pagination
-  async getAll(req: Request<{}, {}, {}, GetMeditationsQuery>, res: Response) {
+  static async getAllMeditations(req: Request<{}, {}, {}, GetMeditationsQuery>, res: Response) {
     try {
       const { page = 1, limit = 10, category, difficulty, type, search } = req.query;
       const query: any = { isActive: true };
@@ -59,7 +59,7 @@ export class MeditationController {
   }
 
   // Get a single meditation by ID
-  async getById(req: Request<{ id: string }>, res: Response) {
+  static async getMeditationById(req: Request<{ id: string }>, res: Response) {
     try {
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -78,8 +78,52 @@ export class MeditationController {
     }
   }
 
+  // Start a meditation session
+  static async startMeditation(req: Request<{ id: string }>, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'Invalid meditation ID' });
+      }
+
+      const meditation = await Meditation.findById(id);
+      if (!meditation) {
+        return res.status(404).json({ message: 'Meditation not found' });
+      }
+
+      // Here you would typically create a meditation session record
+      // For now, just return success
+      return res.json({ message: 'Meditation session started', meditation });
+    } catch (error) {
+      console.error('Error starting meditation:', error);
+      return res.status(500).json({ message: 'Error starting meditation session' });
+    }
+  }
+
+  // Complete a meditation session
+  static async completeMeditation(req: Request<{ id: string }>, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'Invalid meditation ID' });
+      }
+
+      const meditation = await Meditation.findById(id);
+      if (!meditation) {
+        return res.status(404).json({ message: 'Meditation not found' });
+      }
+
+      // Here you would typically update the meditation session record
+      // For now, just return success
+      return res.json({ message: 'Meditation session completed', meditation });
+    } catch (error) {
+      console.error('Error completing meditation:', error);
+      return res.status(500).json({ message: 'Error completing meditation session' });
+    }
+  }
+
   // Update a meditation
-  async update(req: Request<{ id: string }, {}, UpdateMeditationInput>, res: Response) {
+  static async update(req: Request<{ id: string }, {}, UpdateMeditationInput>, res: Response) {
     try {
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -97,8 +141,8 @@ export class MeditationController {
       console.log('Debug - Types:', {
         authorIdType: typeof meditation.authorId,
         userIdType: typeof req.user?._id,
-        authorIdInstance: meditation.authorId instanceof mongoose.Types.ObjectId,
-        userIdInstance: req.user?._id instanceof mongoose.Types.ObjectId
+        authorIdValid: meditation.authorId ? mongoose.Types.ObjectId.isValid(meditation.authorId) : false,
+        userIdValid: req.user?._id ? mongoose.Types.ObjectId.isValid(req.user._id) : false
       });
       console.log('Debug - Direct comparison result:', meditation.authorId?.toString() === req.user?._id?.toString());
       
@@ -120,7 +164,7 @@ export class MeditationController {
   }
 
   // Delete a meditation (soft delete by setting isActive to false)
-  async delete(req: Request<{ id: string }>, res: Response) {
+  static async delete(req: Request<{ id: string }>, res: Response) {
     try {
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -143,5 +187,19 @@ export class MeditationController {
       console.error('Error deleting meditation:', error);
       return res.status(500).json({ message: 'Error deleting meditation' });
     }
+  }
+
+  private static validateMeditationData(meditation: CreateMeditationInput) {
+    const validationResults = {
+      titleLength: meditation.title.length >= 3 && meditation.title.length <= 100,
+      descriptionLength: meditation.description.length >= 10 && meditation.description.length <= 1000,
+      durationValid: meditation.duration > 0 && meditation.duration <= 120,
+      typeValid: ['guided', 'unguided', 'music'].includes(meditation.type),
+      categoryValid: ['mindfulness', 'breathing', 'body_scan', 'loving_kindness', 'transcendental', 'zen', 'vipassana', 'yoga'].includes(meditation.category),
+      difficultyValid: ['beginner', 'intermediate', 'advanced'].includes(meditation.difficulty),
+      tagsValid: Array.isArray(meditation.tags) && meditation.tags.every(tag => typeof tag === 'string'),
+      authorIdValid: meditation.authorId ? mongoose.Types.ObjectId.isValid(meditation.authorId) : true
+    };
+    return validationResults;
   }
 } 
