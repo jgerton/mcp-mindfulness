@@ -350,6 +350,138 @@
           }
         }
       ]
+    },
+    {
+      "name": "Streak Testing",
+      "item": [
+        {
+          "name": "Create First Session (Day 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"meditationId\": \"{{MEDITATION_ID}}\", \"durationCompleted\": 10, \"completed\": true, \"moodBefore\": \"bad\", \"moodAfter\": \"good\", \"startTime\": \"2024-03-01T10:00:00.000Z\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions"]
+            }
+          }
+        },
+        {
+          "name": "Create Second Session (Day 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"meditationId\": \"{{MEDITATION_ID}}\", \"durationCompleted\": 15, \"completed\": true, \"moodBefore\": \"neutral\", \"moodAfter\": \"good\", \"startTime\": \"2024-03-02T10:00:00.000Z\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions"]
+            }
+          }
+        },
+        {
+          "name": "Create Same Day Session (Day 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"meditationId\": \"{{MEDITATION_ID}}\", \"durationCompleted\": 20, \"completed\": true, \"moodBefore\": \"good\", \"moodAfter\": \"very_good\", \"startTime\": \"2024-03-02T15:00:00.000Z\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions"]
+            }
+          }
+        },
+        {
+          "name": "Create Session After Break (Day 5)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"meditationId\": \"{{MEDITATION_ID}}\", \"durationCompleted\": 10, \"completed\": true, \"moodBefore\": \"bad\", \"moodAfter\": \"neutral\", \"startTime\": \"2024-03-05T10:00:00.000Z\"}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions"]
+            }
+          }
+        },
+        {
+          "name": "Get Stats After Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions/stats/summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions", "stats", "summary"]
+            }
+          }
+        }
+      ]
     }
   ]
 } 
