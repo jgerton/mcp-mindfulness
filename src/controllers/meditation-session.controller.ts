@@ -219,7 +219,7 @@ export class MeditationSessionController {
       const userId = req.user?._id;
       
       // Get total sessions and minutes meditated
-      const [totalStats, recentSessions, moodAnalysis, timeAnalysis] = await Promise.all([
+      const [totalStats, recentSessions, moodAnalysis, timeAnalysis, streakAnalysis] = await Promise.all([
         MeditationSession.aggregate([
           { $match: { userId: new mongoose.Types.ObjectId(userId), completed: true } },
           { 
@@ -409,6 +409,61 @@ export class MeditationSessionController {
               ]
             }
           }
+        ]),
+        // Streak analysis
+        MeditationSession.aggregate([
+          {
+            $match: {
+              userId: new mongoose.Types.ObjectId(userId),
+              completed: true
+            }
+          },
+          {
+            $sort: { startTime: -1 }
+          },
+          {
+            $group: {
+              _id: null,
+              // Current streak from the latest session
+              currentStreak: { $first: '$streakDay' },
+              // Find the longest streak
+              longestStreak: { $max: '$streakDay' },
+              // Count total streaks (when maintainedStreak is true)
+              totalStreaks: {
+                $sum: { $cond: ['$maintainedStreak', 1, 0] }
+              },
+              // Collect milestone achievements
+              milestones: {
+                $addToSet: {
+                  $cond: [
+                    { $ne: ['$streakMilestone', 'none'] },
+                    '$streakMilestone',
+                    '$$REMOVE'
+                  ]
+                }
+              },
+              // Get streak history (last 30 days)
+              streakHistory: {
+                $push: {
+                  date: '$startTime',
+                  streakDay: '$streakDay',
+                  maintained: '$maintainedStreak',
+                  milestone: '$streakMilestone'
+                }
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              currentStreak: 1,
+              longestStreak: 1,
+              totalStreaks: 1,
+              milestones: 1,
+              // Only keep last 30 days of streak history
+              streakHistory: { $slice: ['$streakHistory', 30] }
+            }
+          }
         ])
       ]);
 
@@ -441,7 +496,13 @@ export class MeditationSessionController {
         totalSessions: totalStats[0]?.totalSessions || 0,
         totalMinutes: totalStats[0]?.totalMinutes || 0,
         averageDuration: Math.round((totalStats[0]?.averageDuration || 0) * 10) / 10,
-        currentStreak,
+        streakStats: {
+          currentStreak: streakAnalysis[0]?.currentStreak || 0,
+          longestStreak: streakAnalysis[0]?.longestStreak || 0,
+          totalStreaks: streakAnalysis[0]?.totalStreaks || 0,
+          milestones: streakAnalysis[0]?.milestones || [],
+          streakHistory: streakAnalysis[0]?.streakHistory || []
+        },
         moodAnalysis: {
           overall: {
             totalSessions: overallMoodStats.totalMoodSessions,
