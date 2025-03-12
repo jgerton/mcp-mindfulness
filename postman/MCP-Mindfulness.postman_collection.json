@@ -19,7 +19,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"password123\"\n}"
+              "raw": "{\n    \"username\": \"testuser123\",\n    \"email\": \"testuser@example.com\",\n    \"password\": \"Test123!@#\"\n}"
             },
             "url": {
               "raw": "http://localhost:3000/api/auth/register",
@@ -42,7 +42,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"password123\"\n}"
+              "raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"Test123!@#\"\n}"
             },
             "url": {
               "raw": "http://localhost:3000/api/auth/login",
@@ -69,12 +69,12 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"title\": \"Morning Mindfulness\",\n    \"description\": \"A peaceful morning meditation session\",\n    \"duration\": 10,\n    \"type\": \"mindfulness\",\n    \"category\": \"morning\",\n    \"difficulty\": \"beginner\",\n    \"audioUrl\": \"https://example.com/meditation.mp3\",\n    \"tags\": [\"morning\", \"mindfulness\", \"beginner\"]\n}"
+              "raw": "{\n    \"title\": \"Morning Mindfulness\",\n    \"description\": \"A peaceful morning meditation session\",\n    \"duration\": 10,\n    \"type\": \"guided\",\n    \"category\": \"mindfulness\",\n    \"difficulty\": \"beginner\",\n    \"audioUrl\": \"https://example.com/meditation.mp3\",\n    \"tags\": [\"morning\", \"mindfulness\", \"beginner\"]\n}"
             },
             "url": {
               "raw": "http://localhost:3000/api/meditations",
@@ -92,7 +92,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "url": {
@@ -143,7 +143,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "url": {
@@ -166,7 +166,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "body": {
@@ -189,7 +189,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "url": {
@@ -217,12 +217,12 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"meditationId\": \"{{meditation_id}}\",\n    \"durationCompleted\": 10,\n    \"completed\": true,\n    \"moodBefore\": \"neutral\",\n    \"moodAfter\": \"good\",\n    \"notes\": \"Felt very relaxed after this session\"\n}"
+              "raw": "{\n    \"meditationId\": \"67d10f794070fcd69601ffbb\",\n    \"durationCompleted\": 10,\n    \"completed\": true,\n    \"moodBefore\": \"neutral\",\n    \"moodAfter\": \"good\",\n    \"notes\": \"Felt very relaxed after this session\"\n}"
             },
             "url": {
               "raw": "http://localhost:3000/api/meditation-sessions",
@@ -240,7 +240,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "url": {
@@ -291,7 +291,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "url": {
@@ -314,7 +314,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "body": {
@@ -337,7 +337,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{jwt_token}}"
+                "value": "Bearer {{TOKEN}}"
               }
             ],
             "url": {

@@ -42,30 +42,116 @@ export class MeditationSessionController {
         startDate,
         endDate,
         completed,
-        meditationId
+        meditationId,
+        type,
+        category,
+        minDuration,
+        maxDuration,
+        moodBefore,
+        moodAfter,
+        sortBy = 'startTime',
+        sortOrder = 'desc'
       } = req.query;
 
       const query: any = { userId: req.user?._id };
 
+      // Basic filters
       if (startDate) query.startTime = { $gte: new Date(startDate) };
       if (endDate) query.startTime = { ...query.startTime, $lte: new Date(endDate) };
       if (completed !== undefined) query.completed = completed;
-      if (meditationId) query.meditationId = meditationId;
+      if (meditationId) query.meditationId = new mongoose.Types.ObjectId(meditationId);
 
-      const [sessions, total] = await Promise.all([
-        MeditationSession.find(query)
-          .sort({ startTime: -1 })
-          .skip((page - 1) * limit)
-          .limit(limit)
-          .populate('meditationId', 'title duration type category'),
-        MeditationSession.countDocuments(query)
+      // Duration filters
+      if (minDuration || maxDuration) {
+        query.durationCompleted = {};
+        if (minDuration) query.durationCompleted.$gte = minDuration;
+        if (maxDuration) query.durationCompleted.$lte = maxDuration;
+      }
+
+      // Mood filters
+      if (moodBefore) query.moodBefore = moodBefore;
+      if (moodAfter) query.moodAfter = moodAfter;
+
+      // Meditation type and category filters (using $lookup)
+      const aggregatePipeline: any[] = [
+        { $match: query },
+        {
+          $lookup: {
+            from: 'meditations',
+            localField: 'meditationId',
+            foreignField: '_id',
+            as: 'meditation'
+          }
+        },
+        { $unwind: '$meditation' }
+      ];
+
+      if (type) {
+        aggregatePipeline.push({
+          $match: { 'meditation.type': type }
+        });
+      }
+
+      if (category) {
+        aggregatePipeline.push({
+          $match: { 'meditation.category': category }
+        });
+      }
+
+      // Sorting
+      const sortStage: any = {};
+      if (sortBy === 'duration') {
+        sortStage.$sort = { durationCompleted: sortOrder === 'desc' ? -1 : 1 };
+      } else if (sortBy === 'moodImprovement') {
+        // Add mood improvement calculation
+        aggregatePipeline.push({
+          $addFields: {
+            moodImprovement: {
+              $switch: {
+                branches: [
+                  { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 4 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 3 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'neutral'] }] }, then: 2 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'bad'] }] }, then: 1 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 3 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 2 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'neutral'] }] }, then: 1 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'neutral'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 2 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'neutral'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 1 },
+                  { case: { $and: [{ $eq: ['$moodBefore', 'good'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 1 }
+                ],
+                default: 0
+              }
+            }
+          }
+        });
+        sortStage.$sort = { moodImprovement: sortOrder === 'desc' ? -1 : 1 };
+      } else {
+        sortStage.$sort = { startTime: sortOrder === 'desc' ? -1 : 1 };
+      }
+      aggregatePipeline.push(sortStage);
+
+      // Pagination
+      const skip = (page - 1) * limit;
+      aggregatePipeline.push(
+        { $skip: skip },
+        { $limit: limit }
+      );
+
+      // Execute aggregation
+      const [sessions, totalCount] = await Promise.all([
+        MeditationSession.aggregate(aggregatePipeline),
+        MeditationSession.aggregate([
+          ...aggregatePipeline.slice(0, -2), // Remove skip and limit
+          { $count: 'total' }
+        ])
       ]);
 
       return res.json({
         sessions,
-        total,
+        total: totalCount[0]?.total || 0,
         page,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil((totalCount[0]?.total || 0) / limit)
       });
     } catch (error) {
       console.error('Error getting meditation sessions:', error);

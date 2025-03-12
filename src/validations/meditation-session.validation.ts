@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MoodType } from '../models/meditation-session.model';
 
 const moodEnum = ['very_bad', 'bad', 'neutral', 'good', 'very_good'] as const;
 
@@ -18,15 +19,23 @@ export const updateMeditationSessionSchema = z.object({
   moodAfter: z.enum(moodEnum).optional()
 });
 
-export const getMeditationSessionsQuerySchema = z.object({
-  page: z.string().transform(Number).optional(),
-  limit: z.string().transform(Number).optional(),
+export const getMeditationSessionsSchema = z.object({
+  page: z.number().int().positive().optional(),
+  limit: z.number().int().positive().max(100).optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
-  completed: z.string().transform(val => val === 'true').optional(),
-  meditationId: z.string().optional()
+  completed: z.boolean().optional(),
+  meditationId: z.string().optional(),
+  type: z.enum(['guided', 'timer', 'ambient']).optional(),
+  category: z.enum(['mindfulness', 'breathing', 'body-scan', 'loving-kindness', 'other']).optional(),
+  minDuration: z.number().int().positive().optional(),
+  maxDuration: z.number().int().positive().optional(),
+  moodBefore: z.enum(['very_bad', 'bad', 'neutral', 'good', 'very_good'] as [MoodType, ...MoodType[]]).optional(),
+  moodAfter: z.enum(['very_bad', 'bad', 'neutral', 'good', 'very_good'] as [MoodType, ...MoodType[]]).optional(),
+  sortBy: z.enum(['startTime', 'duration', 'moodImprovement']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional()
 });
 
 export type CreateMeditationSessionInput = z.infer<typeof createMeditationSessionSchema>;
 export type UpdateMeditationSessionInput = z.infer<typeof updateMeditationSessionSchema>;
-export type GetMeditationSessionsQuery = z.infer<typeof getMeditationSessionsQuerySchema>; 
+export type GetMeditationSessionsQuery = z.infer<typeof getMeditationSessionsSchema>; 
