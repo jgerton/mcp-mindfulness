@@ -81,7 +81,7 @@ MCP Mindfulness is a comprehensive digital platform designed to guide users thro
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-org/mcp-mindfulness.git
+   git clone https://github.com/jgerton/mcp-mindfulness.git
    cd mcp-mindfulness
    ```
 
@@ -109,7 +109,7 @@ Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pul
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Additional Resources
+<!-- TODO ## 🔗 Additional Resources
 
 - [Project Wiki](https://github.com/your-org/mcp-mindfulness/wiki)
 - [API Documentation](https://api-docs.mcp-mindfulness.com)
@@ -120,7 +120,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For support, please:
 1. Check our [Documentation](https://docs.mcp-mindfulness.com)
 2. Search [Issues](https://github.com/your-org/mcp-mindfulness/issues)
-3. Create a new issue if needed
+3. Create a new issue if needed -->
 
 ---
 
