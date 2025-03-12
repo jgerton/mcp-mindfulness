@@ -92,7 +92,17 @@ export class MeditationController {
       }
 
       // Check if user is authorized to update (if they're the author)
-      if (meditation.authorId && meditation.authorId.toString() !== req.user?._id) {
+      console.log('Debug - Meditation authorId:', meditation.authorId?.toString());
+      console.log('Debug - Current user ID:', req.user?._id?.toString());
+      console.log('Debug - Types:', {
+        authorIdType: typeof meditation.authorId,
+        userIdType: typeof req.user?._id,
+        authorIdInstance: meditation.authorId instanceof mongoose.Types.ObjectId,
+        userIdInstance: req.user?._id instanceof mongoose.Types.ObjectId
+      });
+      console.log('Debug - Direct comparison result:', meditation.authorId?.toString() === req.user?._id?.toString());
+      
+      if (meditation.authorId && meditation.authorId.toString() !== req.user?._id?.toString()) {
         return res.status(403).json({ message: 'Not authorized to update this meditation' });
       }
 
@@ -123,7 +133,7 @@ export class MeditationController {
       }
 
       // Check if user is authorized to delete (if they're the author)
-      if (meditation.authorId && meditation.authorId.toString() !== req.user?._id) {
+      if (meditation.authorId && meditation.authorId.toString() !== req.user?._id?.toString()) {
         return res.status(403).json({ message: 'Not authorized to delete this meditation' });
       }
 
