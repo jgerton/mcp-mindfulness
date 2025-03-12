@@ -1,0 +1,77 @@
+# Source code
+src/
+
+# Tests
+test/
+tests/
+__tests__/
+
+# Documentation
+docs/
+*.md
+
+# Configuration files
+.*
+
+# Build tools
+webpack.config.js
+babel.config.js
+tsconfig.json
+
+# Development files
+node_modules/
+coverage/
+
+# Version control
+.git/
+.gitignore
+
+# IDE files
+.idea/
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env*
+
+# Build output
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+
+# Debug files
+*.debug
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# TypeScript
+*.ts
+*.tsx
+!*.d.ts
+
+# Test files
+*.spec.*
+*.test.*
+
+# Example files
+examples/
+
+# CI/CD
+.travis.yml
+.circleci/
+
+# Docker
+Dockerfile
+docker-compose.yml
