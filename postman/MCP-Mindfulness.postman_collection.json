@@ -1,0 +1,355 @@
+{
+  "info": {
+    "name": "MCP-Mindfulness",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/auth/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Meditations",
+      "item": [
+        {
+          "name": "Create Meditation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Morning Mindfulness\",\n    \"description\": \"A peaceful morning meditation session\",\n    \"duration\": 10,\n    \"type\": \"mindfulness\",\n    \"category\": \"morning\",\n    \"difficulty\": \"beginner\",\n    \"audioUrl\": \"https://example.com/meditation.mp3\",\n    \"tags\": [\"morning\", \"mindfulness\", \"beginner\"]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditations",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditations"]
+            }
+          }
+        },
+        {
+          "name": "Get All Meditations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/meditations",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditations"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "morning",
+                  "disabled": true
+                },
+                {
+                  "key": "difficulty",
+                  "value": "beginner",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "mindfulness",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "morning",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Meditation by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/meditations/{{meditation_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditations", "{{meditation_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Meditation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Updated Morning Mindfulness\",\n    \"description\": \"An updated peaceful morning meditation session\",\n    \"duration\": 15\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditations/{{meditation_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditations", "{{meditation_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Meditation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/meditations/{{meditation_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditations", "{{meditation_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Meditation Sessions",
+      "item": [
+        {
+          "name": "Create Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"meditationId\": \"{{meditation_id}}\",\n    \"durationCompleted\": 10,\n    \"completed\": true,\n    \"moodBefore\": \"neutral\",\n    \"moodAfter\": \"good\",\n    \"notes\": \"Felt very relaxed after this session\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions"]
+            }
+          }
+        },
+        {
+          "name": "Get All Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-03-01T00:00:00Z",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-03-31T23:59:59Z",
+                  "disabled": true
+                },
+                {
+                  "key": "completed",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "meditationId",
+                  "value": "{{meditation_id}}",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Session by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions/{{session_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions", "{{session_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Session",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"completed\": true,\n    \"durationCompleted\": 12,\n    \"moodAfter\": \"very_good\",\n    \"notes\": \"One of my best sessions!\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions/{{session_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions", "{{session_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/meditation-sessions/stats/summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "meditation-sessions", "stats", "summary"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 
