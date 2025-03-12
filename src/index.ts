@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 // Import routes
 import authRoutes from './routes/auth.routes';
 import meditationRoutes from './routes/meditation.routes';
+import meditationSessionRoutes from './routes/meditation-session.routes';
 
 // Load environment variables
 dotenv.config();
@@ -33,6 +34,7 @@ app.use(limiter);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/meditations', meditationRoutes);
+app.use('/api/meditation-sessions', meditationSessionRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
