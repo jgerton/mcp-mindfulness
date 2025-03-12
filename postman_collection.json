@@ -1,0 +1,181 @@
+{
+	"info": {
+		"name": "mcp-mindfulness",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"url": "{{BASE_URL}}/auth/register",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"password\": \"Test123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.environment.set(\"TOKEN\", jsonData.token);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{BASE_URL}}/auth/login",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"Test123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Meditations",
+			"item": [
+				{
+					"name": "Get All Meditations",
+					"request": {
+						"method": "GET",
+						"url": "{{BASE_URL}}/meditations",
+						"query": [
+							{
+								"key": "page",
+								"value": "1"
+							},
+							{
+								"key": "limit",
+								"value": "10"
+							},
+							{
+								"key": "category",
+								"value": "mindfulness",
+								"disabled": true
+							},
+							{
+								"key": "difficulty",
+								"value": "beginner",
+								"disabled": true
+							},
+							{
+								"key": "type",
+								"value": "guided",
+								"disabled": true
+							},
+							{
+								"key": "search",
+								"value": "",
+								"disabled": true
+							}
+						]
+					}
+				},
+				{
+					"name": "Get Meditation by ID",
+					"request": {
+						"method": "GET",
+						"url": "{{BASE_URL}}/meditations/:id",
+						"variable": [
+							{
+								"key": "id",
+								"value": "meditation_id_here"
+							}
+						]
+					}
+				},
+				{
+					"name": "Create Meditation",
+					"request": {
+						"method": "POST",
+						"url": "{{BASE_URL}}/meditations",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Morning Mindfulness\",\n    \"description\": \"Start your day with a peaceful mindfulness meditation\",\n    \"duration\": 10,\n    \"type\": \"guided\",\n    \"audioUrl\": \"https://example.com/meditations/morning-mindfulness.mp3\",\n    \"category\": \"mindfulness\",\n    \"difficulty\": \"beginner\",\n    \"tags\": [\"morning\", \"mindfulness\", \"beginner\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Update Meditation",
+					"request": {
+						"method": "PUT",
+						"url": "{{BASE_URL}}/meditations/:id",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{TOKEN}}"
+							}
+						],
+						"variable": [
+							{
+								"key": "id",
+								"value": "meditation_id_here"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Morning Mindfulness\",\n    \"description\": \"Updated description\",\n    \"duration\": 15\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Delete Meditation",
+					"request": {
+						"method": "DELETE",
+						"url": "{{BASE_URL}}/meditations/:id",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{TOKEN}}"
+							}
+						],
+						"variable": [
+							{
+								"key": "id",
+								"value": "meditation_id_here"
+							}
+						]
+					}
+				}
+			]
+		}
+	]
+} 
