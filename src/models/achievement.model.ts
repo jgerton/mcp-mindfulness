@@ -8,7 +8,9 @@ export interface IAchievement {
   description: string;
   points: number;
   progress: number;
+  target: number;
   completed: boolean;
+  completedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -39,9 +41,16 @@ const achievementSchema = new mongoose.Schema<IAchievement>({
     type: Number,
     default: 0
   },
+  target: {
+    type: Number,
+    required: true
+  },
   completed: {
     type: Boolean,
     default: false
+  },
+  completedAt: {
+    type: Date
   }
 }, {
   timestamps: true
@@ -62,5 +71,15 @@ export const ACHIEVEMENT_CONFIGS: Record<string, { maxProgress: number, points: 
   zen_master: { maxProgress: 100, points: 1000 },
   mood_lifter: { maxProgress: 10, points: 150 },
   zen_state: { maxProgress: 5, points: 200 },
-  emotional_growth: { maxProgress: 20, points: 300 }
+  emotional_growth: { maxProgress: 20, points: 300 },
+  social_butterfly: { maxProgress: 10, points: 200 },
+  group_guide: { maxProgress: 5, points: 300 },
+  community_pillar: { maxProgress: 20, points: 400 },
+  synchronized_souls: { maxProgress: 3, points: 250 },
+  meditation_circle: { maxProgress: 1, points: 150 },
+  friend_zen: { maxProgress: 5, points: 200 },
+  group_streak: { maxProgress: 7, points: 350 },
+  mindful_mentor: { maxProgress: 10, points: 400 },
+  harmony_seeker: { maxProgress: 15, points: 300 },
+  zen_network: { maxProgress: 30, points: 500 }
 }; 
