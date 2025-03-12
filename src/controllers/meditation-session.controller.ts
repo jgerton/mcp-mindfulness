@@ -335,16 +335,139 @@ export class MeditationSessionController {
           },
           {
             $facet: {
-              // Daily patterns (hour of day)
-              hourlyPatterns: [
+              // Time of day patterns (grouped into 4-hour blocks)
+              timeOfDayPatterns: [
                 {
                   $group: {
-                    _id: { $hour: '$startTime' },
+                    _id: {
+                      timeBlock: {
+                        $switch: {
+                          branches: [
+                            { case: { $and: [{ $gte: [{ $hour: '$startTime' }, 5] }, { $lt: [{ $hour: '$startTime' }, 9] }] }, then: 'Early Morning (5-9)' },
+                            { case: { $and: [{ $gte: [{ $hour: '$startTime' }, 9] }, { $lt: [{ $hour: '$startTime' }, 13] }] }, then: 'Late Morning (9-13)' },
+                            { case: { $and: [{ $gte: [{ $hour: '$startTime' }, 13] }, { $lt: [{ $hour: '$startTime' }, 17] }] }, then: 'Afternoon (13-17)' },
+                            { case: { $and: [{ $gte: [{ $hour: '$startTime' }, 17] }, { $lt: [{ $hour: '$startTime' }, 21] }] }, then: 'Evening (17-21)' },
+                            { case: { $and: [{ $gte: [{ $hour: '$startTime' }, 21] }, { $lt: [{ $hour: '$startTime' }, 24] }] }, then: 'Night (21-24)' }
+                          ],
+                          default: 'Late Night (0-5)'
+                        }
+                      },
+                      dayOfWeek: { $dayOfWeek: '$startTime' }
+                    },
                     count: { $sum: 1 },
-                    avgDuration: { $avg: '$durationCompleted' }
+                    avgDuration: { $avg: '$durationCompleted' },
+                    avgMoodImprovement: {
+                      $avg: {
+                        $switch: {
+                          branches: [
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 4 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 3 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'neutral'] }] }, then: 2 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'bad'] }] }, then: 1 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 3 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 2 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'neutral'] }] }, then: 1 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'neutral'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 2 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'neutral'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 1 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'good'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 1 }
+                          ],
+                          default: 0
+                        }
+                      }
+                    }
                   }
                 },
-                { $sort: { '_id': 1 } }
+                {
+                  $project: {
+                    _id: 0,
+                    timeBlock: '$_id.timeBlock',
+                    dayOfWeek: '$_id.dayOfWeek',
+                    count: 1,
+                    avgDuration: { $round: ['$avgDuration', 1] },
+                    avgMoodImprovement: { $round: ['$avgMoodImprovement', 2] },
+                    effectiveness: {
+                      $round: [
+                        { $multiply: [
+                          { $divide: ['$avgMoodImprovement', 4] }, // 4 is max mood improvement
+                          100
+                        ]},
+                        1
+                      ]
+                    }
+                  }
+                },
+                { $sort: { 'timeBlock': 1, 'dayOfWeek': 1 } }
+              ],
+              // Duration trends
+              durationTrends: [
+                {
+                  $group: {
+                    _id: {
+                      durationRange: {
+                        $switch: {
+                          branches: [
+                            { case: { $lte: ['$durationCompleted', 5] }, then: '1-5 minutes' },
+                            { case: { $lte: ['$durationCompleted', 10] }, then: '6-10 minutes' },
+                            { case: { $lte: ['$durationCompleted', 15] }, then: '11-15 minutes' },
+                            { case: { $lte: ['$durationCompleted', 20] }, then: '16-20 minutes' },
+                            { case: { $lte: ['$durationCompleted', 30] }, then: '21-30 minutes' }
+                          ],
+                          default: '30+ minutes'
+                        }
+                      },
+                      month: { $month: '$startTime' },
+                      year: { $year: '$startTime' }
+                    },
+                    count: { $sum: 1 },
+                    totalMinutes: { $sum: '$durationCompleted' },
+                    avgMoodImprovement: {
+                      $avg: {
+                        $switch: {
+                          branches: [
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 4 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 3 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'neutral'] }] }, then: 2 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'very_bad'] }, { $eq: ['$moodAfter', 'bad'] }] }, then: 1 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 3 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 2 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'bad'] }, { $eq: ['$moodAfter', 'neutral'] }] }, then: 1 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'neutral'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 2 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'neutral'] }, { $eq: ['$moodAfter', 'good'] }] }, then: 1 },
+                            { case: { $and: [{ $eq: ['$moodBefore', 'good'] }, { $eq: ['$moodAfter', 'very_good'] }] }, then: 1 }
+                          ],
+                          default: 0
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    durationRange: '$_id.durationRange',
+                    month: '$_id.month',
+                    year: '$_id.year',
+                    count: 1,
+                    totalMinutes: 1,
+                    avgMoodImprovement: { $round: ['$avgMoodImprovement', 2] },
+                    effectiveness: {
+                      $round: [
+                        { $multiply: [
+                          { $divide: ['$avgMoodImprovement', 4] }, // 4 is max mood improvement
+                          100
+                        ]},
+                        1
+                      ]
+                    }
+                  }
+                },
+                { 
+                  $sort: { 
+                    'year': -1,
+                    'month': -1,
+                    'durationRange': 1
+                  }
+                }
               ],
               // Weekly trends
               weeklyTrends: [
@@ -365,7 +488,7 @@ export class MeditationSessionController {
                     '_id.week': -1
                   }
                 },
-                { $limit: 12 } // Last 12 weeks
+                { $limit: 12 }
               ],
               // Monthly progress
               monthlyProgress: [
@@ -389,23 +512,7 @@ export class MeditationSessionController {
                     '_id.month': -1
                   }
                 },
-                { $limit: 12 } // Last 12 months
-              ],
-              // Year over year comparison
-              yearlyComparison: [
-                {
-                  $group: {
-                    _id: { $year: '$startTime' },
-                    totalSessions: { $sum: 1 },
-                    totalMinutes: { $sum: '$durationCompleted' },
-                    avgDuration: { $avg: '$durationCompleted' },
-                    completionRate: {
-                      $avg: { $cond: ['$completed', 1, 0] }
-                    }
-                  }
-                },
-                { $sort: { '_id': -1 } },
-                { $limit: 3 } // Last 3 years
+                { $limit: 12 }
               ]
             }
           }
@@ -513,10 +620,10 @@ export class MeditationSessionController {
           byTypeAndCategory: moodAnalysis
         },
         timeAnalysis: {
-          dailyPatterns: timeAnalysis[0]?.hourlyPatterns || [],
+          timeOfDayPatterns: timeAnalysis[0]?.timeOfDayPatterns || [],
+          durationTrends: timeAnalysis[0]?.durationTrends || [],
           weeklyTrends: timeAnalysis[0]?.weeklyTrends || [],
-          monthlyProgress: timeAnalysis[0]?.monthlyProgress || [],
-          yearlyComparison: timeAnalysis[0]?.yearlyComparison || []
+          monthlyProgress: timeAnalysis[0]?.monthlyProgress || []
         }
       };
 
