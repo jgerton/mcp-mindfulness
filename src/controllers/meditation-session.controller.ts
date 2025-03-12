@@ -133,7 +133,7 @@ export class MeditationSessionController {
       const userId = req.user?._id;
       
       // Get total sessions and minutes meditated
-      const [totalStats, recentSessions, moodAnalysis] = await Promise.all([
+      const [totalStats, recentSessions, moodAnalysis, timeAnalysis] = await Promise.all([
         MeditationSession.aggregate([
           { $match: { userId: new mongoose.Types.ObjectId(userId), completed: true } },
           { 
@@ -151,7 +151,7 @@ export class MeditationSessionController {
           completed: true
         })
         .sort({ startTime: -1 })
-        .limit(30), // Look at last 30 days
+        .limit(30),
         // Get mood impact analysis
         MeditationSession.aggregate([
           { 
@@ -238,6 +238,91 @@ export class MeditationSessionController {
             }
           },
           { $sort: { effectivenessScore: -1 } }
+        ]),
+        // Time-based analytics
+        MeditationSession.aggregate([
+          {
+            $match: {
+              userId: new mongoose.Types.ObjectId(userId),
+              completed: true
+            }
+          },
+          {
+            $facet: {
+              // Daily patterns (hour of day)
+              hourlyPatterns: [
+                {
+                  $group: {
+                    _id: { $hour: '$startTime' },
+                    count: { $sum: 1 },
+                    avgDuration: { $avg: '$durationCompleted' }
+                  }
+                },
+                { $sort: { '_id': 1 } }
+              ],
+              // Weekly trends
+              weeklyTrends: [
+                {
+                  $group: {
+                    _id: { 
+                      year: { $year: '$startTime' },
+                      week: { $week: '$startTime' }
+                    },
+                    count: { $sum: 1 },
+                    totalMinutes: { $sum: '$durationCompleted' },
+                    avgDuration: { $avg: '$durationCompleted' }
+                  }
+                },
+                { 
+                  $sort: { 
+                    '_id.year': -1,
+                    '_id.week': -1
+                  }
+                },
+                { $limit: 12 } // Last 12 weeks
+              ],
+              // Monthly progress
+              monthlyProgress: [
+                {
+                  $group: {
+                    _id: {
+                      year: { $year: '$startTime' },
+                      month: { $month: '$startTime' }
+                    },
+                    count: { $sum: 1 },
+                    totalMinutes: { $sum: '$durationCompleted' },
+                    avgDuration: { $avg: '$durationCompleted' },
+                    completionRate: {
+                      $avg: { $cond: ['$completed', 1, 0] }
+                    }
+                  }
+                },
+                {
+                  $sort: {
+                    '_id.year': -1,
+                    '_id.month': -1
+                  }
+                },
+                { $limit: 12 } // Last 12 months
+              ],
+              // Year over year comparison
+              yearlyComparison: [
+                {
+                  $group: {
+                    _id: { $year: '$startTime' },
+                    totalSessions: { $sum: 1 },
+                    totalMinutes: { $sum: '$durationCompleted' },
+                    avgDuration: { $avg: '$durationCompleted' },
+                    completionRate: {
+                      $avg: { $cond: ['$completed', 1, 0] }
+                    }
+                  }
+                },
+                { $sort: { '_id': -1 } },
+                { $limit: 3 } // Last 3 years
+              ]
+            }
+          }
         ])
       ]);
 
@@ -279,6 +364,12 @@ export class MeditationSessionController {
               : 0
           },
           byTypeAndCategory: moodAnalysis
+        },
+        timeAnalysis: {
+          dailyPatterns: timeAnalysis[0]?.hourlyPatterns || [],
+          weeklyTrends: timeAnalysis[0]?.weeklyTrends || [],
+          monthlyProgress: timeAnalysis[0]?.monthlyProgress || [],
+          yearlyComparison: timeAnalysis[0]?.yearlyComparison || []
         }
       };
 
