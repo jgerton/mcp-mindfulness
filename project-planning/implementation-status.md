@@ -66,5 +66,5 @@
 
 ---
 
-*Last updated: [Current Date]*
+*Last updated: 2024-03-14*
 *[← Back to Main README](../README.md)*
