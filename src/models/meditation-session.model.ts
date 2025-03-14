@@ -1,70 +1,64 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 import { AchievementService } from '../services/achievement.service';
 
-export interface IMeditationSession {
-  _id?: mongoose.Types.ObjectId;
+export interface IMeditationSession extends Document {
   userId: mongoose.Types.ObjectId;
   meditationId: mongoose.Types.ObjectId;
   startTime: Date;
   endTime?: Date;
-  durationCompleted: number;
+  duration: number;
+  durationCompleted?: number;
+  status: 'active' | 'completed' | 'cancelled';
+  interruptions: number;
   completed: boolean;
   streakDay?: number;
   maintainedStreak?: boolean;
-  moodBefore?: 'very_bad' | 'bad' | 'neutral' | 'good' | 'very_good';
-  moodAfter?: 'very_bad' | 'bad' | 'neutral' | 'good' | 'very_good';
+  moodBefore?: 'anxious' | 'stressed' | 'neutral' | 'calm' | 'peaceful';
+  moodAfter?: 'anxious' | 'stressed' | 'neutral' | 'calm' | 'peaceful';
   notes?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const meditationSessionSchema = new mongoose.Schema<IMeditationSession>({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const meditationSessionSchema = new Schema<IMeditationSession>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    meditationId: { type: Schema.Types.ObjectId, ref: 'Meditation', required: true },
+    startTime: { type: Date, required: true },
+    endTime: { type: Date },
+    duration: { type: Number, required: true },
+    durationCompleted: { type: Number },
+    status: {
+      type: String,
+      enum: ['active', 'completed', 'cancelled'],
+      required: true
+    },
+    interruptions: { type: Number, required: true },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    streakDay: {
+      type: Number
+    },
+    maintainedStreak: {
+      type: Boolean,
+      default: false
+    },
+    moodBefore: {
+      type: String,
+      enum: ['anxious', 'stressed', 'neutral', 'calm', 'peaceful']
+    },
+    moodAfter: {
+      type: String,
+      enum: ['anxious', 'stressed', 'neutral', 'calm', 'peaceful']
+    },
+    notes: {
+      type: String
+    }
   },
-  meditationId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Meditation',
-    required: true
-  },
-  startTime: {
-    type: Date,
-    required: true
-  },
-  endTime: {
-    type: Date
-  },
-  durationCompleted: {
-    type: Number,
-    required: true
-  },
-  completed: {
-    type: Boolean,
-    default: false
-  },
-  streakDay: {
-    type: Number
-  },
-  maintainedStreak: {
-    type: Boolean,
-    default: false
-  },
-  moodBefore: {
-    type: String,
-    enum: ['very_bad', 'bad', 'neutral', 'good', 'very_good']
-  },
-  moodAfter: {
-    type: String,
-    enum: ['very_bad', 'bad', 'neutral', 'good', 'very_good']
-  },
-  notes: {
-    type: String
-  }
-}, {
-  timestamps: true
-});
+  { timestamps: true }
+);
 
 // Post-save hook to process achievements
 meditationSessionSchema.post('save', async function(doc) {

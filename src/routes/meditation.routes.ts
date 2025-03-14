@@ -1,49 +1,52 @@
 import express, { Request, Response } from 'express';
-import { MeditationController } from '../controllers/meditation.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { MeditationController } from '../controllers/meditation.controller';
 
 const router = express.Router();
 
 // Get all meditations
-// No authentication required for viewing meditations
-router.get('/', (req: Request, res: Response): void => {
-  MeditationController.getAllMeditations(req, res)
-    .catch((error: Error) => {
-      if (!res.headersSent) {
-        res.status(500).json({ message: error.message });
-      }
-    });
+router.get('/', (req: Request, res: Response) => {
+  MeditationController.getAllMeditations(req, res);
 });
 
 // Get meditation by ID
-// No authentication required for viewing a meditation
-router.get('/:id', (req: Request<{ id: string }>, res: Response): void => {
-  MeditationController.getMeditationById(req, res)
-    .catch((error: Error) => {
-      if (!res.headersSent) {
-        res.status(500).json({ message: error.message });
-      }
-    });
+router.get('/:id', (req: Request<{ id: string }>, res: Response) => {
+  MeditationController.getMeditationById(req, res);
 });
 
-// Start a meditation session
-router.post('/:id/start', authenticateToken, (req: Request<{ id: string }>, res: Response): void => {
-  MeditationController.startMeditation(req, res)
-    .catch((error: Error) => {
-      if (!res.headersSent) {
-        res.status(500).json({ message: error.message });
-      }
-    });
+// Create new meditation
+router.post('/', authenticateToken, (req: Request, res: Response) => {
+  MeditationController.createMeditation(req, res);
 });
 
-// Complete a meditation session
-router.post('/:id/complete', authenticateToken, (req: Request<{ id: string }>, res: Response): void => {
-  MeditationController.completeMeditation(req, res)
-    .catch((error: Error) => {
-      if (!res.headersSent) {
-        res.status(500).json({ message: error.message });
-      }
-    });
+// Update meditation
+router.put('/:id', authenticateToken, (req: Request<{ id: string }>, res: Response) => {
+  MeditationController.updateMeditation(req, res);
+});
+
+// Delete meditation
+router.delete('/:id', authenticateToken, (req: Request<{ id: string }>, res: Response) => {
+  MeditationController.deleteMeditation(req, res);
+});
+
+// Start meditation session
+router.post('/:id/start', authenticateToken, (req: Request<{ id: string }>, res: Response) => {
+  MeditationController.startSession(req, res);
+});
+
+// Complete meditation session
+router.post('/:id/complete', authenticateToken, (req: Request<{ id: string }>, res: Response) => {
+  MeditationController.completeSession(req, res);
+});
+
+// Get active session
+router.get('/session/active', authenticateToken, (req: Request, res: Response) => {
+  MeditationController.getActiveSession(req, res);
+});
+
+// Record interruption
+router.post('/session/:id/interrupt', authenticateToken, (req: Request<{ id: string }>, res: Response) => {
+  MeditationController.recordInterruption(req, res);
 });
 
 export default router; 

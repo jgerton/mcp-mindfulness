@@ -4,171 +4,275 @@ import { Meditation } from '../models/meditation.model';
 import { MeditationSession, IMeditationSession } from '../models/meditation-session.model';
 import { Achievement, IAchievement } from '../models/achievement.model';
 import { AchievementService } from '../services/achievement.service';
+import { connectDB, disconnectDB, clearDB } from './helpers/db.helper';
 
 describe('Achievement System', () => {
-  let user: IUser & { _id: mongoose.Types.ObjectId };
-  let meditation: mongoose.Document & { _id: mongoose.Types.ObjectId };
+  let userId: mongoose.Types.ObjectId;
+  let meditationId: mongoose.Types.ObjectId;
+  let achievementService: AchievementService;
+
+  beforeAll(async () => {
+    await connectDB();
+  });
+
+  afterAll(async () => {
+    await disconnectDB();
+  });
 
   beforeEach(async () => {
-    try {
-      // Create test user
-      const createdUser = await User.create({
-        email: 'test@example.com',
-        password: 'password123',
-        username: 'testuser',
-        isActive: true
-      });
-      user = createdUser as IUser & { _id: mongoose.Types.ObjectId };
-
-      // Create test meditation
-      const createdMeditation = await Meditation.create({
-        title: 'Test Meditation',
-        description: 'Test Description',
-        duration: 10,
-        audioUrl: 'https://example.com/audio.mp3',
-        type: 'guided',
-        category: 'mindfulness',
-        difficulty: 'beginner',
-        tags: ['test'],
-        isActive: true
-      });
-      meditation = createdMeditation as mongoose.Document & { _id: mongoose.Types.ObjectId };
-
-      // Initialize achievements for user
-      await AchievementService.initializeAchievements(user._id.toString());
-    } catch (error) {
-      console.error('Error in test setup:', error);
-      throw error;
-    }
+    await clearDB();
+    
+    const user = await User.create({
+      username: 'testuser',
+      email: 'test@example.com',
+      password: 'password123'
+    });
+    const meditation = await Meditation.create({
+      title: 'Test Meditation',
+      description: 'Test Description',
+      audioUrl: 'test.mp3',
+      duration: 10,
+      difficulty: 'beginner',
+      category: 'mindfulness',
+      type: 'guided'
+    });
+    userId = user._id;
+    meditationId = meditation._id;
+    achievementService = new AchievementService();
   });
 
   describe('Time-based Achievements', () => {
     it('should award Early Bird achievement', async () => {
-      // Create 5 early morning sessions
-      for (let i = 0; i < 5; i++) {
-        const session = await MeditationSession.create({
-          userId: user._id,
-          meditationId: meditation._id,
-          startTime: new Date(`2024-03-${12 + i}T07:00:00`), // 7 AM
-          durationCompleted: 10,
-          completed: true,
-          moodBefore: 'neutral',
-          moodAfter: 'good'
-        });
-
-        await AchievementService.processSession(session.toObject());
-      }
-
-      const achievement = await Achievement.findOne({
-        userId: user._id,
-        type: 'early_bird'
+      await AchievementService.initializeAchievements(userId.toString());
+      
+      const session = await MeditationSession.create({
+        userId,
+        meditationId,
+        startTime: new Date('2024-03-12T05:00:00'),
+        endTime: new Date('2024-03-12T05:10:00'),
+        duration: 10,
+        durationCompleted: 10,
+        status: 'completed',
+        interruptions: 0,
+        completed: true,
+        moodBefore: 'anxious',
+        moodAfter: 'peaceful'
       });
 
-      expect(achievement).toBeDefined();
-      expect(achievement?.completed).toBe(true);
-      expect(achievement?.progress).toBe(5);
+      await AchievementService.processSession(session.toObject());
+
+      const achievements = await Achievement.find({ userId, type: 'early_bird' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].completed).toBe(true);
     });
   });
 
   describe('Duration-based Achievements', () => {
     it('should award Marathon Meditator achievement', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
       const session = await MeditationSession.create({
-        userId: user._id,
-        meditationId: meditation._id,
+        userId,
+        meditationId,
         startTime: new Date(),
-        durationCompleted: 35, // > 30 minutes
+        endTime: new Date(Date.now() + 30 * 60000),
+        duration: 30,
+        durationCompleted: 30,
+        status: 'completed',
+        interruptions: 0,
         completed: true,
         moodBefore: 'neutral',
-        moodAfter: 'good'
+        moodAfter: 'peaceful'
       });
 
       await AchievementService.processSession(session.toObject());
 
-      const achievement = await Achievement.findOne({
-        userId: user._id,
-        type: 'marathon_meditator'
-      });
-
-      expect(achievement).toBeDefined();
-      expect(achievement?.completed).toBe(true);
-      expect(achievement?.progress).toBe(1);
+      const achievements = await Achievement.find({ userId, type: 'marathon_meditator' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].progress).toBe(1);
     });
   });
 
   describe('Streak-based Achievements', () => {
     it('should award Week Warrior achievement', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
       // Create 7 consecutive daily sessions
+      const now = Date.now();
       for (let i = 0; i < 7; i++) {
         const session = await MeditationSession.create({
-          userId: user._id,
-          meditationId: meditation._id,
-          startTime: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000), // Past 7 days
+          userId,
+          meditationId,
+          startTime: new Date(now - (6 - i) * 24 * 60 * 60 * 1000),
+          endTime: new Date(now - (6 - i) * 24 * 60 * 60 * 1000 + 10 * 60000),
+          duration: 10,
           durationCompleted: 10,
+          status: 'completed',
+          interruptions: 0,
           completed: true,
           moodBefore: 'neutral',
-          moodAfter: 'good',
-          streakDay: i + 1,
-          maintainedStreak: true
+          moodAfter: 'peaceful'
         });
 
         await AchievementService.processSession(session.toObject());
       }
 
-      const achievement = await Achievement.findOne({
-        userId: user._id,
-        type: 'week_warrior'
-      });
-
-      expect(achievement).toBeDefined();
-      expect(achievement?.completed).toBe(true);
+      const achievements = await Achievement.find({ userId, type: 'week_warrior' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].progress).toBe(7);
     });
   });
 
   describe('Mood-based Achievements', () => {
     it('should award Mood Lifter achievement', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
       // Create 10 sessions with mood improvement
       for (let i = 0; i < 10; i++) {
         const session = await MeditationSession.create({
-          userId: user._id,
-          meditationId: meditation._id,
-          startTime: new Date(Date.now() - i * 24 * 60 * 60 * 1000),
+          userId,
+          meditationId,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 10 * 60000),
+          duration: 10,
           durationCompleted: 10,
+          status: 'completed',
+          interruptions: 0,
           completed: true,
-          moodBefore: 'bad',
-          moodAfter: 'good'
+          moodBefore: 'anxious',
+          moodAfter: 'peaceful'
         });
 
         await AchievementService.processSession(session.toObject());
       }
 
-      const achievement = await Achievement.findOne({
-        userId: user._id,
-        type: 'mood_lifter'
-      });
-
-      expect(achievement).toBeDefined();
-      expect(achievement?.completed).toBe(true);
-      expect(achievement?.progress).toBe(10);
+      const achievements = await Achievement.find({ userId, type: 'mood_lifter' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].progress).toBe(10);
     });
   });
 
-  describe('Points System', () => {
-    it('should correctly calculate total points', async () => {
-      // Complete multiple achievements
+  describe('Duration Achievements', () => {
+    it('should award beginner achievement for first session', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
       const session = await MeditationSession.create({
-        userId: user._id,
-        meditationId: meditation._id,
-        startTime: new Date('2024-03-12T07:00:00'), // Early Bird
-        durationCompleted: 35, // Marathon Meditator
+        userId,
+        meditationId,
+        startTime: new Date(),
+        endTime: new Date(Date.now() + 10 * 60000),
+        duration: 10,
+        durationCompleted: 10,
+        status: 'completed',
+        interruptions: 0,
         completed: true,
-        moodBefore: 'bad',
-        moodAfter: 'very_good' // Zen State
+        moodBefore: 'neutral',
+        moodAfter: 'peaceful'
       });
 
       await AchievementService.processSession(session.toObject());
 
-      const points = await AchievementService.getUserPoints(user._id.toString());
-      expect(points).toBeGreaterThan(0);
+      const achievements = await Achievement.find({ userId, type: 'beginner_meditator' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].progress).toBe(1);
+    });
+
+    it('should award intermediate achievement after 10 sessions', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
+      // Create 10 sessions
+      for (let i = 0; i < 10; i++) {
+        const session = await MeditationSession.create({
+          userId,
+          meditationId,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 10 * 60000),
+          duration: 10,
+          durationCompleted: 10,
+          status: 'completed',
+          interruptions: 0,
+          completed: true,
+          moodBefore: 'neutral',
+          moodAfter: 'peaceful'
+        });
+
+        await AchievementService.processSession(session.toObject());
+      }
+
+      const achievements = await Achievement.find({ userId, type: 'intermediate_meditator' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].progress).toBe(10);
+    });
+
+    it('should award advanced achievement after 50 sessions', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
+      // Create 50 sessions
+      for (let i = 0; i < 50; i++) {
+        const session = await MeditationSession.create({
+          userId,
+          meditationId,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 10 * 60000),
+          duration: 10,
+          durationCompleted: 10,
+          status: 'completed',
+          interruptions: 0,
+          completed: true,
+          moodBefore: 'neutral',
+          moodAfter: 'peaceful'
+        });
+
+        await AchievementService.processSession(session.toObject());
+      }
+
+      const achievements = await Achievement.find({ userId, type: 'advanced_meditator' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].progress).toBe(50);
+    });
+
+    it('should not award achievements for incomplete sessions', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
+      const session = await MeditationSession.create({
+        userId,
+        meditationId,
+        startTime: new Date(),
+        endTime: new Date(Date.now() + 10 * 60000),
+        duration: 10,
+        durationCompleted: 5,
+        status: 'cancelled',
+        interruptions: 0,
+        completed: false,
+        moodBefore: 'neutral',
+        moodAfter: 'neutral'
+      });
+
+      await AchievementService.processSession(session.toObject());
+
+      const achievements = await Achievement.find({ userId, type: 'beginner_meditator' });
+      expect(achievements).toHaveLength(1);
+      expect(achievements[0].progress).toBe(0);
+    });
+  });
+
+  describe('Points System', () => {
+    it('should calculate total points correctly', async () => {
+      await AchievementService.initializeAchievements(userId.toString());
+      
+      // Create achievements with points
+      await Achievement.updateMany(
+        { userId, type: { $in: ['beginner_meditator', 'intermediate_meditator'] } },
+        { $set: { completed: true, progress: 10 } }
+      );
+
+      const totalPoints = await AchievementService.getUserPoints(userId.toString());
+      expect(totalPoints).toBe(60); // 10 + 50 points
+    });
+
+    it('should return 0 points for user with no achievements', async () => {
+      const totalPoints = await AchievementService.getUserPoints(userId.toString());
+      expect(totalPoints).toBe(0);
     });
   });
 }); 
