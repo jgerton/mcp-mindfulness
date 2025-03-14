@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IMeditation extends Document {
+  _id: mongoose.Types.ObjectId;
   title: string;
   description: string;
   duration: number; // in minutes

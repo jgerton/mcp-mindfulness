@@ -1,5 +1,33 @@
 # Coding Standards
 
+[← Back to Main README](../README.md)
+
+## What are Coding Standards?
+
+Coding standards are a set of guidelines and best practices that ensure code consistency, readability, and maintainability across our project. They help us:
+- Write clean, efficient code
+- Maintain consistent style
+- Prevent common errors
+- Facilitate collaboration
+
+This plan is crucial because it helps us:
+- Reduce technical debt
+- Improve code quality
+- Speed up code reviews
+- Onboard new developers efficiently
+
+## Helpful Resources for New Team Members
+- [TypeScript Best Practices](https://www.typescriptlang.org/docs/handbook/declaration-files/do-s-and-don-ts.html)
+- [React Style Guide](https://github.com/airbnb/javascript/tree/master/react)
+- [Clean Code Principles](https://github.com/ryanmcdermott/clean-code-javascript)
+- [ESLint Rules](https://eslint.org/docs/rules/)
+
+## Related Documentation
+- [Testing Standards](testing-standards.md) - Code testing requirements
+- [Architecture Plan](architecture-plan.md) - Code organization
+- [Work Flow](work-flow.md) - Development process
+- [Frontend Interface](frontend-interface-plan.md) - UI implementation standards
+
 ## General Guidelines
 
 - Write clean, readable, and maintainable code
@@ -88,3 +116,20 @@ export const Component: React.FC<Props> = ({ prop1, prop2 }) => {
 - [ ] Documentation is updated
 - [ ] No linting errors
 - [ ] Builds successfully
+
+## Additional Resources
+
+### Internal References
+- See [Document Grounding](document-grounding-plan.md) for content management standards
+- Check [Learning Analytics](learning-analytics-plan.md) for data handling patterns
+- Review [User Journey](user-journey-plan.md) for feature implementation guidelines
+
+### External Resources
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [React Best Practices](https://reactjs.org/docs/hooks-rules.html)
+- [TailwindCSS Guidelines](https://tailwindcss.com/docs)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+
+---
+
+*[← Back to Main README](../README.md)*

@@ -3,6 +3,7 @@ import { Achievement } from '../models/achievement.model';
 import { IMeditationSession } from '../models/meditation-session.model';
 import { IGroupSession } from '../models/group-session.model';
 import { Friend } from '../models/friend.model';
+import { MeditationSession } from '../models/meditation-session.model';
 
 export interface IAchievement {
   userId: mongoose.Types.ObjectId;
@@ -21,10 +22,13 @@ type AchievementType =
   | 'group_guide'
   | 'week_warrior'
   | 'mindful_month'
-  | 'social_butterfly';
+  | 'social_butterfly'
+  | 'beginner_meditator'
+  | 'intermediate_meditator'
+  | 'advanced_meditator';
 
 export class AchievementService {
-  private static readonly ACHIEVEMENT_TARGETS: Record<AchievementType, number> = {
+  private static readonly ACHIEVEMENT_TARGETS: Record<AchievementType | string, number> = {
     early_bird: 5,
     night_owl: 5,
     marathon_meditator: 1,
@@ -33,10 +37,13 @@ export class AchievementService {
     group_guide: 5,
     week_warrior: 7,
     mindful_month: 30,
-    social_butterfly: 5
+    social_butterfly: 5,
+    beginner_meditator: 1,
+    intermediate_meditator: 10,
+    advanced_meditator: 50
   };
 
-  private static readonly ACHIEVEMENT_DETAILS: Record<AchievementType, { title: string; description: string; points: number }> = {
+  private static readonly ACHIEVEMENT_DETAILS: Record<AchievementType | string, { title: string; description: string; points: number }> = {
     early_bird: {
       title: 'Early Bird',
       description: 'Complete 5 meditation sessions before 9 AM',
@@ -81,6 +88,21 @@ export class AchievementService {
       title: 'Social Butterfly',
       description: 'Make 5 friends in the community',
       points: 150
+    },
+    beginner_meditator: {
+      title: 'Beginner Meditator',
+      description: 'Complete your first meditation session',
+      points: 10
+    },
+    intermediate_meditator: {
+      title: 'Intermediate Meditator',
+      description: 'Complete 10 meditation sessions',
+      points: 50
+    },
+    advanced_meditator: {
+      title: 'Advanced Meditator',
+      description: 'Complete 50 meditation sessions',
+      points: 100
     }
   };
 
@@ -109,33 +131,38 @@ export class AchievementService {
   }
 
   public static async processSession(session: IMeditationSession): Promise<void> {
+    if (!session.completed) {
+      return;
+    }
+
     const startTime = new Date(session.startTime);
     const hour = startTime.getHours();
 
     // Early Bird (5-9 AM)
     if (hour >= 5 && hour < 9) {
-      await this.incrementAchievement(session.userId.toString(), 'early_bird', 1);
+      await this.completeAchievement(session.userId.toString(), 'early_bird');
     }
 
     // Night Owl (10 PM-2 AM)
     if (hour >= 22 || hour < 2) {
-      await this.incrementAchievement(session.userId.toString(), 'night_owl', 1);
+      await this.completeAchievement(session.userId.toString(), 'night_owl');
     }
 
     // Marathon Meditator (30+ minutes)
-    if (session.durationCompleted >= 30) {
+    if (session.duration >= 30) {
       await this.completeAchievement(session.userId.toString(), 'marathon_meditator');
     }
 
     // Mood Lifter (mood improvement)
     if (session.moodBefore && session.moodAfter && this.isMoodImproved(session.moodBefore, session.moodAfter)) {
-      await this.incrementAchievement(session.userId.toString(), 'mood_lifter', 1);
+      await this.completeAchievement(session.userId.toString(), 'mood_lifter');
     }
 
     // Week Warrior (7 consecutive days)
-    if (session.completed) {
-      await this.incrementAchievement(session.userId.toString(), 'week_warrior', 1);
-    }
+    await this.checkStreakAchievements(session);
+
+    // Session count achievements
+    await this.checkSessionCountAchievements(session);
   }
 
   public static async processGroupSession(userId: string): Promise<void> {
@@ -144,15 +171,25 @@ export class AchievementService {
 
   public static async getUserPoints(userId: string): Promise<number> {
     const achievements = await Achievement.find({ 
-      userId, 
-      completed: true,
-      completedAt: { $ne: null } 
+      userId,
+      $or: [
+        { completed: true },
+        { progress: { $gt: 0 } }
+      ]
     });
-    return achievements.reduce((total, achievement) => total + achievement.points, 0);
+    
+    return achievements.reduce((total, achievement) => {
+      if (achievement.completed) {
+        return total + (achievement.points || 0);
+      }
+      // For incomplete achievements, award partial points based on progress
+      const progressRatio = achievement.progress / achievement.target;
+      return total + Math.floor((achievement.points || 0) * progressRatio);
+    }, 0);
   }
 
   private static isMoodImproved(before: string, after: string): boolean {
-    const moodScale = ['terrible', 'bad', 'neutral', 'good', 'excellent'];
+    const moodScale = ['anxious', 'stressed', 'neutral', 'calm', 'peaceful'];
     return moodScale.indexOf(after) > moodScale.indexOf(before);
   }
 
@@ -227,5 +264,107 @@ export class AchievementService {
     }
 
     await achievement.save();
+  }
+
+  static async checkDurationAchievements(session: IMeditationSession): Promise<void> {
+    if ((session.durationCompleted ?? 0) >= 30) {
+      await AchievementService.completeAchievement(session.userId.toString(), 'marathon_meditator');
+    }
+  }
+
+  private static async checkSessionCountAchievements(session: IMeditationSession): Promise<void> {
+    const userId = session.userId.toString();
+    const sessionCount = await MeditationSession.countDocuments({
+      userId: session.userId,
+      completed: true
+    });
+
+    // Beginner achievement (first session)
+    if (sessionCount === 1) {
+      await this.completeAchievement(userId, 'beginner_meditator');
+    }
+
+    // Intermediate achievement (10 sessions)
+    if (sessionCount >= 10) {
+      await this.completeAchievement(userId, 'intermediate_meditator');
+    }
+
+    // Advanced achievement (50 sessions)
+    if (sessionCount >= 50) {
+      await this.completeAchievement(userId, 'advanced_meditator');
+    }
+  }
+
+  private static async checkStreakAchievements(session: IMeditationSession): Promise<void> {
+    const userId = session.userId.toString();
+    const today = new Date(session.startTime);
+    today.setHours(0, 0, 0, 0);
+
+    // Get all completed sessions for the user in the last 30 days
+    const sessions = await MeditationSession.find({
+      userId: session.userId,
+      completed: true,
+      startTime: { $gte: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) }
+    }).sort({ startTime: 1 });
+
+    // Group sessions by date
+    const sessionsByDate = new Map<string, boolean>();
+    sessions.forEach(s => {
+      const date = new Date(s.startTime);
+      date.setHours(0, 0, 0, 0);
+      sessionsByDate.set(date.toISOString(), true);
+    });
+
+    // Find the earliest session date
+    const earliestSession = sessions[0];
+    if (!earliestSession) return;
+
+    const startDate = new Date(earliestSession.startTime);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Calculate current streak by looking forward from the earliest date
+    let streak = 0;
+    let currentStreak = 0;
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      date.setHours(0, 0, 0, 0);
+      
+      if (sessionsByDate.has(date.toISOString())) {
+        currentStreak++;
+        streak = Math.max(streak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    }
+
+    // Update Week Warrior achievement
+    const weekWarrior = await Achievement.findOne({
+      userId: new mongoose.Types.ObjectId(userId),
+      type: 'week_warrior'
+    });
+
+    if (weekWarrior && !weekWarrior.completed) {
+      weekWarrior.progress = streak;
+      if (streak >= weekWarrior.target) {
+        weekWarrior.completed = true;
+        weekWarrior.completedAt = new Date();
+      }
+      await weekWarrior.save();
+    }
+
+    // Update Mindful Month achievement
+    const mindfulMonth = await Achievement.findOne({
+      userId: new mongoose.Types.ObjectId(userId),
+      type: 'mindful_month'
+    });
+
+    if (mindfulMonth && !mindfulMonth.completed) {
+      mindfulMonth.progress = streak;
+      if (streak >= mindfulMonth.target) {
+        mindfulMonth.completed = true;
+        mindfulMonth.completedAt = new Date();
+      }
+      await mindfulMonth.save();
+    }
   }
 }

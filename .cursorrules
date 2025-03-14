@@ -1,0 +1,2 @@
+When working with or generating Jest tests for this project, make sure jest --watch is running continuously. Focus on failing tests and avoid redundant changes.
+When planning to update tests, do a secondary thorough review of the test suite and the project code to make sure the changes make sense.

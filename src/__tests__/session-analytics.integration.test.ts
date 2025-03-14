@@ -1,6 +1,3 @@
-// Import test setup first
-import './helpers/test-setup';
-
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { app } from '../app';
@@ -8,22 +5,14 @@ import { User } from '../models/user.model';
 import { Meditation } from '../models/meditation.model';
 import { MeditationSession } from '../models/meditation-session.model';
 import { SessionAnalytics } from '../models/session-analytics.model';
+import type { MoodType } from '../models/session-analytics.model';
 import { generateToken } from '../utils/jwt.utils';
-import { connectDB, disconnectDB } from './helpers/db.helper';
 import config from '../config';
 
 describe('Session Analytics Integration', () => {
   let userId: string;
   let meditationId: string;
   let token: string;
-
-  beforeAll(async () => {
-    await connectDB();
-  });
-
-  afterAll(async () => {
-    await disconnectDB();
-  });
 
   beforeEach(async () => {
     await mongoose.connection.dropDatabase();
@@ -35,12 +24,7 @@ describe('Session Analytics Integration', () => {
       password: 'password123'
     });
     userId = user._id.toString();
-    console.log('Test environment:', process.env.NODE_ENV);
-    console.log('JWT secret:', process.env.JWT_SECRET);
-    console.log('User ID:', userId);
-    console.log('Username:', user.username);
     token = generateToken(user._id.toString(), user.username);
-    console.log('Generated token:', token);
 
     // Create test meditation
     const meditation = await Meditation.create({
@@ -66,7 +50,7 @@ describe('Session Analytics Integration', () => {
           meditationId,
           duration: 10,
           completed: false,
-          moodBefore: 'anxious'
+          moodBefore: 'anxious' as MoodType
         });
 
       expect(response.status).toBe(201);
@@ -80,7 +64,7 @@ describe('Session Analytics Integration', () => {
           duration: 10,
           durationCompleted: 10,
           completed: true,
-          moodAfter: 'peaceful',
+          moodAfter: 'peaceful' as MoodType,
           notes: 'Test session completed'
         });
 
@@ -105,7 +89,7 @@ describe('Session Analytics Integration', () => {
           duration: 10,
           durationCompleted: 10,
           completed: true,
-          moodAfter: 'peaceful',
+          moodAfter: 'peaceful' as MoodType,
           notes: 'Test session completed'
         });
 
@@ -122,7 +106,7 @@ describe('Session Analytics Integration', () => {
           meditationId,
           duration: 10,
           completed: false,
-          moodBefore: 'anxious'
+          moodBefore: 'anxious' as MoodType
         });
 
       // Attempt to create second session
@@ -133,7 +117,7 @@ describe('Session Analytics Integration', () => {
           meditationId,
           duration: 10,
           completed: false,
-          moodBefore: 'anxious'
+          moodBefore: 'anxious' as MoodType
         });
 
       expect(response.status).toBe(400);
@@ -154,8 +138,8 @@ describe('Session Analytics Integration', () => {
         duration: 10,
         durationCompleted: 10,
         completed: true,
-        moodBefore: 'anxious',
-        moodAfter: 'peaceful'
+        moodBefore: 'anxious' as MoodType,
+        moodAfter: 'peaceful' as MoodType
       });
 
       await SessionAnalytics.create({
@@ -168,8 +152,8 @@ describe('Session Analytics Integration', () => {
         completed: true,
         interruptions: 0,
         maintainedStreak: false,
-        moodBefore: 'anxious',
-        moodAfter: 'peaceful'
+        moodBefore: 'anxious' as MoodType,
+        moodAfter: 'peaceful' as MoodType
       });
 
       const response = await request(app)
@@ -192,8 +176,8 @@ describe('Session Analytics Integration', () => {
         duration: 10,
         durationCompleted: 10,
         completed: true,
-        moodBefore: 'anxious',
-        moodAfter: 'peaceful'
+        moodBefore: 'anxious' as MoodType,
+        moodAfter: 'peaceful' as MoodType
       });
 
       await SessionAnalytics.create({
@@ -206,8 +190,8 @@ describe('Session Analytics Integration', () => {
         completed: true,
         interruptions: 0,
         maintainedStreak: false,
-        moodBefore: 'anxious',
-        moodAfter: 'peaceful'
+        moodBefore: 'anxious' as MoodType,
+        moodAfter: 'peaceful' as MoodType
       });
 
       const response = await request(app)
@@ -230,8 +214,8 @@ describe('Session Analytics Integration', () => {
         duration: 10,
         durationCompleted: 10,
         completed: true,
-        moodBefore: 'anxious',
-        moodAfter: 'peaceful'
+        moodBefore: 'anxious' as MoodType,
+        moodAfter: 'peaceful' as MoodType
       });
 
       await SessionAnalytics.create({
@@ -244,8 +228,8 @@ describe('Session Analytics Integration', () => {
         completed: true,
         interruptions: 0,
         maintainedStreak: false,
-        moodBefore: 'anxious',
-        moodAfter: 'peaceful'
+        moodBefore: 'anxious' as MoodType,
+        moodAfter: 'peaceful' as MoodType
       });
 
       const response = await request(app)
@@ -267,4 +251,4 @@ describe('Session Analytics Integration', () => {
       expect(response.body.message).toBe('Invalid token');
     });
   });
-});
+}); 

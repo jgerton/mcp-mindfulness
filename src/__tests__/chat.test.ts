@@ -1,3 +1,6 @@
+// Set test environment
+process.env.NODE_ENV = 'test';
+
 import mongoose from 'mongoose';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
@@ -27,12 +30,17 @@ describe('Chat System', () => {
   });
 
   afterAll(async () => {
+    if (clientSocket) {
+      clientSocket.disconnect();
+    }
     await mongoose.disconnect();
     await new Promise<void>((resolve) => {
       httpServer.close(() => {
         resolve();
       });
     });
+    // Ensure all handles are closed
+    await new Promise(resolve => setTimeout(resolve, 500));
   });
 
   beforeEach(async () => {
@@ -40,9 +48,9 @@ describe('Chat System', () => {
     await GroupSession.deleteMany({});
     await ChatMessage.deleteMany({});
 
-    // Create test users
+    // Create test users with unique usernames
     host = await User.create({
-      username: 'host',
+      username: `host_${Date.now()}`,
       email: 'host@test.com',
       password: 'password123',
       friendIds: [],
@@ -50,7 +58,7 @@ describe('Chat System', () => {
     });
 
     participant1 = await User.create({
-      username: 'participant1',
+      username: `participant1_${Date.now()}`,
       email: 'participant1@test.com',
       password: 'password123',
       friendIds: [],
@@ -58,16 +66,16 @@ describe('Chat System', () => {
     });
 
     participant2 = await User.create({
-      username: 'participant2',
+      username: `participant2_${Date.now()}`,
       email: 'participant2@test.com',
       password: 'password123',
       friendIds: [],
       blockedUserIds: []
     });
 
-    // Create test session
+    // Create test session with current time
     const scheduledTime = new Date();
-    scheduledTime.setHours(scheduledTime.getHours() + 1);
+    scheduledTime.setMinutes(scheduledTime.getMinutes() + 5); // Schedule 5 minutes from now
 
     const mockMeditationId = new mongoose.Types.ObjectId();
     session = await GroupSessionService.createSession(
@@ -76,30 +84,51 @@ describe('Chat System', () => {
       'Test Session',
       scheduledTime,
       15,
-      { maxParticipants: 3 }
+      { maxParticipants: 3, isPrivate: false }
     );
+
+    // Ensure session is created
+    if (!session) {
+      throw new Error('Failed to create test session');
+    }
 
     // Join the session as participant1
     await GroupSessionService.joinSession(session._id.toString(), participant1._id.toString());
 
-    // Connect client socket
-    clientSocket = Client(`http://localhost:${port}`, {
-      auth: {
-        token: generateToken(participant1._id.toString(), participant1.username)
-      }
-    });
+    // Connect client socket with proper error handling
+    return new Promise<void>((resolve, reject) => {
+      const token = generateToken(participant1._id.toString(), participant1.username);
+      clientSocket = Client(`http://localhost:${port}`, {
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: 3,
+        reconnectionDelay: 1000,
+        timeout: 5000
+      });
 
-    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Socket connection timeout'));
+      }, 5000);
+
       clientSocket.on('connect', () => {
+        clearTimeout(timeout);
         resolve();
+      });
+
+      clientSocket.on('connect_error', (error: Error) => {
+        clearTimeout(timeout);
+        reject(error);
       });
     });
   });
 
   afterEach(async () => {
-    if (clientSocket.connected) {
+    if (clientSocket) {
       clientSocket.disconnect();
     }
+    await User.deleteMany({});
+    await GroupSession.deleteMany({});
+    await ChatMessage.deleteMany({});
   });
 
   describe('REST API', () => {
@@ -142,18 +171,23 @@ describe('Chat System', () => {
 
   describe('WebSocket Events', () => {
     it('should handle join_session event', (done) => {
-      // Add error handling for socket connection
+      const timeout = setTimeout(() => {
+        done(new Error('Test timed out'));
+      }, 5000);
+
       clientSocket.on('connect_error', (error: Error) => {
+        clearTimeout(timeout);
         done(error);
       });
 
       clientSocket.on('error', (error: Error) => {
+        clearTimeout(timeout);
         done(error);
       });
 
-      // Listen for user_joined event before emitting join_session
       clientSocket.on('user_joined', (data: { userId: string; username: string }) => {
         try {
+          clearTimeout(timeout);
           expect(data.userId).toBe(participant1._id.toString());
           expect(data.username).toBe(participant1.username);
           done();
@@ -163,82 +197,85 @@ describe('Chat System', () => {
       });
 
       clientSocket.emit('join_session', session._id.toString());
-    }, 30000);
+    }, 10000);
 
     it('should handle send_message event', (done) => {
-      // Add error handling for socket connection
-      clientSocket.on('connect_error', (error: Error) => {
-        done(error);
-      });
+      const timeout = setTimeout(() => {
+        done(new Error('Test timed out'));
+      }, 5000);
 
-      clientSocket.on('error', (error: Error) => {
-        done(error);
-      });
+      const cleanup = (error?: Error) => {
+        clearTimeout(timeout);
+        if (error) done(error);
+      };
 
-      // Listen for new_message event before sending message
+      clientSocket.on('connect_error', cleanup);
+      clientSocket.on('error', cleanup);
+
       clientSocket.on('new_message', (message: { content: string; userId: string }) => {
         try {
           expect(message.content).toBe('Hello, world!');
           expect(message.userId).toBe(participant1._id.toString());
+          cleanup();
           done();
         } catch (error) {
-          done(error as Error);
+          cleanup(error as Error);
         }
       });
 
-      // First join the session
       clientSocket.emit('join_session', session._id.toString());
       
-      // Wait for user_joined event before sending message
       clientSocket.on('user_joined', () => {
         clientSocket.emit('send_message', {
           sessionId: session._id.toString(),
           content: 'Hello, world!'
         });
       });
-    }, 30000);
+    }, 10000);
 
     it('should handle typing indicators', (done) => {
-      // Add error handling for socket connection
-      clientSocket.on('connect_error', (error: Error) => {
-        done(error);
-      });
+      const timeout = setTimeout(() => {
+        done(new Error('Test timed out'));
+      }, 5000);
 
-      clientSocket.on('error', (error: Error) => {
-        done(error);
-      });
+      const cleanup = (error?: Error) => {
+        clearTimeout(timeout);
+        if (error) done(error);
+      };
 
-      // Listen for typing_start event
+      clientSocket.on('connect_error', cleanup);
+      clientSocket.on('error', cleanup);
+
+      let typingStartReceived = false;
+
       clientSocket.on('typing_start', (data: { userId: string; username: string }) => {
         try {
           expect(data.userId).toBe(participant1._id.toString());
           expect(data.username).toBe(participant1.username);
-          
-          // After receiving typing_start, emit typing_end
+          typingStartReceived = true;
           clientSocket.emit('typing_end', session._id.toString());
         } catch (error) {
-          done(error as Error);
+          cleanup(error as Error);
         }
       });
 
-      // Listen for typing_end event
       clientSocket.on('typing_end', (data: { userId: string; username: string }) => {
         try {
+          expect(typingStartReceived).toBe(true);
           expect(data.userId).toBe(participant1._id.toString());
           expect(data.username).toBe(participant1.username);
+          cleanup();
           done();
         } catch (error) {
-          done(error as Error);
+          cleanup(error as Error);
         }
       });
 
-      // First join the session
       clientSocket.emit('join_session', session._id.toString());
       
-      // Wait for user_joined event before sending typing indicator
       clientSocket.on('user_joined', () => {
         clientSocket.emit('typing_start', session._id.toString());
       });
-    }, 30000);
+    }, 10000);
   });
 });
