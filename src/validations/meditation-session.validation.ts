@@ -1,11 +1,12 @@
 import { z } from 'zod';
-import { MoodType } from '../models/meditation-session.model';
+import { MoodType } from '../models/session-analytics.model';
 
-const moodEnum = ['very_bad', 'bad', 'neutral', 'good', 'very_good'] as const;
+const moodEnum = ['anxious', 'stressed', 'neutral', 'calm', 'peaceful'] as const;
 
 export const createMeditationSessionSchema = z.object({
   meditationId: z.string(),
-  durationCompleted: z.number().min(0),
+  duration: z.number().min(0),
+  durationCompleted: z.number().min(0).optional(),
   completed: z.boolean(),
   notes: z.string().optional(),
   moodBefore: z.enum(moodEnum).optional(),
@@ -13,10 +14,20 @@ export const createMeditationSessionSchema = z.object({
 });
 
 export const updateMeditationSessionSchema = z.object({
+  duration: z.number().min(0).optional(),
   durationCompleted: z.number().min(0).optional(),
   completed: z.boolean().optional(),
   notes: z.string().optional(),
+  moodBefore: z.enum(moodEnum).optional(),
   moodAfter: z.enum(moodEnum).optional()
+});
+
+export const completeMeditationSessionSchema = z.object({
+  duration: z.number().min(0),
+  durationCompleted: z.number().min(0),
+  completed: z.boolean(),
+  moodAfter: z.enum(moodEnum),
+  notes: z.string().optional()
 });
 
 export const getMeditationSessionsSchema = z.object({
@@ -30,12 +41,13 @@ export const getMeditationSessionsSchema = z.object({
   category: z.enum(['mindfulness', 'breathing', 'body-scan', 'loving-kindness', 'other']).optional(),
   minDuration: z.number().int().positive().optional(),
   maxDuration: z.number().int().positive().optional(),
-  moodBefore: z.enum(['very_bad', 'bad', 'neutral', 'good', 'very_good'] as [MoodType, ...MoodType[]]).optional(),
-  moodAfter: z.enum(['very_bad', 'bad', 'neutral', 'good', 'very_good'] as [MoodType, ...MoodType[]]).optional(),
+  moodBefore: z.enum(moodEnum).optional(),
+  moodAfter: z.enum(moodEnum).optional(),
   sortBy: z.enum(['startTime', 'duration', 'moodImprovement']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional()
 });
 
 export type CreateMeditationSessionInput = z.infer<typeof createMeditationSessionSchema>;
 export type UpdateMeditationSessionInput = z.infer<typeof updateMeditationSessionSchema>;
-export type GetMeditationSessionsQuery = z.infer<typeof getMeditationSessionsSchema>; 
+export type CompleteMeditationSessionInput = z.infer<typeof completeMeditationSessionSchema>;
+export type GetMeditationSessionsQuery = z.infer<typeof getMeditationSessionsSchema>;
