@@ -1,50 +1,68 @@
-import express from 'express';
+import { Router } from 'express';
+import { validateRequest } from '../middleware/validation.middleware';
 import { MeditationSessionController } from '../controllers/meditation-session.controller';
-import { authenticate } from '../middleware/authenticate';
-import { validateRequest } from '../middleware/validateRequest';
-import { 
+import {
   createMeditationSessionSchema,
+  getMeditationSessionsSchema,
   updateMeditationSessionSchema,
-  getMeditationSessionsQuerySchema
+  completeMeditationSessionSchema,
+  CreateMeditationSessionInput,
+  UpdateMeditationSessionInput,
+  CompleteMeditationSessionInput,
+  GetMeditationSessionsQuery
 } from '../validations/meditation-session.validation';
+import { z } from 'zod';
+import { Request, Response, NextFunction } from 'express';
+import { authenticateToken } from '../middleware/auth.middleware';
 
-const router = express.Router();
+const router = Router();
 const meditationSessionController = new MeditationSessionController();
 
-// All routes require authentication
-router.use(authenticate);
-
-// Create a new meditation session
 router.post(
   '/',
+  authenticateToken,
   validateRequest({ body: createMeditationSessionSchema }),
-  meditationSessionController.create.bind(meditationSessionController)
+  (req, res) => meditationSessionController.startSession(req, res)
 );
 
-// Get all meditation sessions for the current user
 router.get(
   '/',
-  validateRequest({ query: getMeditationSessionsQuerySchema }),
-  meditationSessionController.getAll.bind(meditationSessionController)
+  authenticateToken,
+  validateRequest({ query: getMeditationSessionsSchema }),
+  (req, res) => meditationSessionController.getAll(req as any, res)
 );
 
-// Get a single meditation session
 router.get(
   '/:id',
-  meditationSessionController.getById.bind(meditationSessionController)
+  authenticateToken,
+  validateRequest({ params: z.object({ id: z.string() }) }),
+  (req, res) => meditationSessionController.getById(req as any, res)
 );
 
-// Update a meditation session
-router.put(
+router.patch(
   '/:id',
-  validateRequest({ body: updateMeditationSessionSchema }),
-  meditationSessionController.update.bind(meditationSessionController)
+  authenticateToken,
+  validateRequest({
+    params: z.object({ id: z.string() }),
+    body: updateMeditationSessionSchema
+  }),
+  (req, res) => meditationSessionController.update(req as any, res)
 );
 
-// Get meditation statistics
-router.get(
-  '/stats/summary',
-  meditationSessionController.getStats.bind(meditationSessionController)
+router.get('/stats', authenticateToken, (req, res) => meditationSessionController.getStats(req, res));
+
+router.post('/start', authenticateToken, (req, res) => meditationSessionController.startSession(req, res));
+
+router.post(
+  '/:sessionId/complete',
+  authenticateToken,
+  validateRequest({
+    params: z.object({ sessionId: z.string() }),
+    body: completeMeditationSessionSchema
+  }),
+  (req, res) => meditationSessionController.completeSession(req as any, res)
 );
 
-export default router; 
+router.get('/active', authenticateToken, (req, res) => meditationSessionController.getActiveSession(req, res));
+
+export default router;
