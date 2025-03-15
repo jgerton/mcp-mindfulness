@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { MeditationSession } from '../models/meditation-session.model';
-import achievementService from '../services/achievement.service';
+import { AchievementService } from '../services/achievement.service';
 
 /**
  * Controller for MeditationSession-related API endpoints
@@ -277,7 +277,15 @@ export class MeditationSessionController {
       await session.completeSession();
 
       // Process achievements
-      await achievementService.processMeditationCompletion(userId, session);
+      await AchievementService.processMeditationAchievements({
+        userId: new mongoose.Types.ObjectId(userId.toString()),
+        sessionId: new mongoose.Types.ObjectId((session as any)._id.toString()),
+        meditationId: (session as any).guidedMeditationId || new mongoose.Types.ObjectId(),
+        duration: (session as any).duration || 0,
+        interruptions: (session as any).interruptions || 0,
+        moodImprovement: (session as any).moodAfter && (session as any).moodBefore ? 
+          calculateMoodImprovement((session as any).moodBefore, (session as any).moodAfter) : 0
+      });
 
       res.status(200).json(session);
     } catch (error) {
@@ -467,4 +475,20 @@ export class MeditationSessionController {
       return `${minutes}m`;
     }
   }
+}
+
+// Helper function to calculate mood improvement
+function calculateMoodImprovement(moodBefore: string, moodAfter: string): number {
+  const moodValues: Record<string, number> = {
+    'anxious': 1,
+    'stressed': 2,
+    'neutral': 3,
+    'calm': 4,
+    'peaceful': 5
+  };
+  
+  const beforeValue = moodValues[moodBefore] || 3;
+  const afterValue = moodValues[moodAfter] || 3;
+  
+  return Math.max(0, afterValue - beforeValue);
 } 

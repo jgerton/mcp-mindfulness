@@ -22,21 +22,21 @@ router.post(
   '/',
   authenticateToken,
   validateRequest({ body: createMeditationSessionSchema }),
-  (req, res) => meditationSessionController.startSession(req, res)
+  (req, res) => meditationSessionController.createSession(req, res)
 );
 
 router.get(
   '/',
   authenticateToken,
   validateRequest({ query: getMeditationSessionsSchema }),
-  (req, res) => meditationSessionController.getAll(req as any, res)
+  (req, res) => meditationSessionController.getUserSessions(req as any, res)
 );
 
 router.get(
   '/:id',
   authenticateToken,
   validateRequest({ params: z.object({ id: z.string() }) }),
-  (req, res) => meditationSessionController.getById(req as any, res)
+  (req, res) => meditationSessionController.getSessionById(req as any, res)
 );
 
 router.patch(
@@ -46,12 +46,12 @@ router.patch(
     params: z.object({ id: z.string() }),
     body: updateMeditationSessionSchema
   }),
-  (req, res) => meditationSessionController.update(req as any, res)
+  (req, res) => meditationSessionController.updateSession(req as any, res)
 );
 
-router.get('/stats', authenticateToken, (req, res) => meditationSessionController.getStats(req, res));
+router.get('/stats', authenticateToken, (req, res) => meditationSessionController.getUserStats(req, res));
 
-router.post('/start', authenticateToken, (req, res) => meditationSessionController.startSession(req, res));
+router.post('/start', authenticateToken, (req, res) => meditationSessionController.createSession(req, res));
 
 router.post(
   '/:sessionId/complete',
@@ -63,6 +63,7 @@ router.post(
   (req, res) => meditationSessionController.completeSession(req as any, res)
 );
 
-router.get('/active', authenticateToken, (req, res) => meditationSessionController.getActiveSession(req, res));
+// This route needs to be implemented in the controller or removed
+// router.get('/active', authenticateToken, (req, res) => meditationSessionController.getActiveSession(req, res));
 
 export default router;

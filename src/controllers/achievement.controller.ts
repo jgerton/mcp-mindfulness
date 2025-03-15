@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import achievementService from '../services/achievement.service';
+import { AchievementService } from '../services/achievement.service';
 import { Achievement, UserAchievement } from '../models/achievement.model';
 
 /**
@@ -257,11 +257,10 @@ export class AchievementController {
         return;
       }
 
-      const totalPoints = await achievementService.calculateUserPoints(userId);
+      const totalPoints = await AchievementService.getUserPoints(userId.toString());
       
       res.status(200).json({ 
-        userId, 
-        totalPoints 
+        points: totalPoints 
       });
     } catch (error) {
       console.error('Error fetching user points:', error);
@@ -270,32 +269,35 @@ export class AchievementController {
   }
 
   /**
-   * Process user activity for achievement progress
+   * Process user activity for achievements
    * @route POST /api/achievements/process
    */
-  public async processUserActivity(req: Request, res: Response): Promise<void> {
+  public async processActivity(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?._id;
+      const { activityType, activityData } = req.body;
 
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized: User not authenticated' });
         return;
       }
 
-      const { activityType, activityData } = req.body;
-
-      if (!activityType || !activityData) {
-        res.status(400).json({ error: 'Missing required fields' });
+      if (!activityType) {
+        res.status(400).json({ error: 'Activity type is required' });
         return;
       }
 
-      const result = await achievementService.processUserActivity(
-        userId,
-        activityType,
-        activityData
-      );
+      // Use the static method for processing meditation achievements
+      const result = await AchievementService.processMeditationAchievements({
+        userId: userId,
+        ...activityData
+      });
 
-      res.status(200).json(result);
+      res.status(200).json({ 
+        success: true,
+        message: 'Activity processed successfully',
+        result
+      });
     } catch (error) {
       console.error('Error processing user activity:', error);
       res.status(500).json({ error: 'Failed to process user activity' });

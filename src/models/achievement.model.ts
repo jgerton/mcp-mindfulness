@@ -80,6 +80,31 @@ const AchievementSchema: Schema = new Schema(
       type: Number,
       required: [true, 'Achievement points are required'],
       min: [0, 'Achievement points cannot be negative']
+    },
+    // Add fields used by the achievement service
+    type: {
+      type: String,
+      index: true
+    },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    },
+    progress: {
+      type: Number,
+      default: 0
+    },
+    target: {
+      type: Number,
+      default: 0
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    completedAt: {
+      type: Date
     }
   },
   {

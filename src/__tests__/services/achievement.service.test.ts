@@ -229,7 +229,9 @@ describe('AchievementService', () => {
         duration: 1800,
         durationCompleted: 1800,
         status: 'completed',
-        completed: true
+        completed: true,
+        title: 'Test Session',
+        type: 'guided'
       });
 
       await session.save();

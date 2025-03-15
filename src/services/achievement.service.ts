@@ -1,11 +1,12 @@
 import mongoose from 'mongoose';
-import { Achievement } from '../models/achievement.model';
+import { Achievement, IAchievementDocument } from '../models/achievement.model';
 import { IMeditationSession } from '../models/meditation-session.model';
 import { IGroupSession } from '../models/group-session.model';
 import { Friend } from '../models/friend.model';
 import { MeditationSession } from '../models/meditation-session.model';
 import { UserPoints } from '../models/user-points.model';
 import { LeaderboardService } from './leaderboard.service';
+import { User } from '../models/user.model';
 
 export interface IAchievement {
   userId: mongoose.Types.ObjectId;
@@ -226,7 +227,14 @@ export class AchievementService {
             description: this.ACHIEVEMENT_DETAILS[type].description,
             points: this.ACHIEVEMENT_DETAILS[type].points,
             completed: false,
-            completedAt: null
+            completedAt: null,
+            name: this.ACHIEVEMENT_DETAILS[type].title,
+            category: 'milestone',
+            criteria: {
+              type: 'count',
+              value: this.ACHIEVEMENT_TARGETS[type]
+            },
+            icon: 'default-icon'
           }
         },
         { upsert: true, new: true }
@@ -370,7 +378,7 @@ export class AchievementService {
     // Ensure properties are initialized if undefined
     if (achievement.progress === undefined) achievement.progress = 0;
     if (achievement.target === undefined) achievement.target = 0;
-    if (achievement.completedAt === undefined) achievement.completedAt = null;
+    if (achievement.completedAt === undefined) achievement.completedAt = undefined;
 
     achievement.progress = friendCount;
     

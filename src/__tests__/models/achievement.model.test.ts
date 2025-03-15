@@ -1,23 +1,17 @@
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Achievement, UserAchievement, IAchievement, IUserAchievement } from '../../models/achievement.model';
-
-let mongoServer: MongoMemoryServer;
+import { connect, closeDatabase, clearDatabase } from '../utils/test-db';
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const uri = mongoServer.getUri();
-  await mongoose.connect(uri);
+  await connect();
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await closeDatabase();
 });
 
 beforeEach(async () => {
-  await Achievement.deleteMany({});
-  await UserAchievement.deleteMany({});
+  await clearDatabase();
 });
 
 describe('Achievement Model', () => {
@@ -177,7 +171,7 @@ describe('UserAchievement Model', () => {
       
       expect(savedUserAchievement._id).toBeDefined();
       expect(savedUserAchievement.userId.toString()).toBe(data.userId.toString());
-      expect(savedUserAchievement.achievementId.toString()).toBe(data.achievementId.toString());
+      expect(savedUserAchievement.achievementId.toString()).toBe((data.achievementId as mongoose.Types.ObjectId).toString());
       expect(savedUserAchievement.progress).toBe(data.progress);
       expect(savedUserAchievement.isCompleted).toBe(data.isCompleted);
       expect(savedUserAchievement.dateEarned).toBeNull();

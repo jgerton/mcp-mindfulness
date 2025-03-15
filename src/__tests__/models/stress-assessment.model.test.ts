@@ -1,22 +1,31 @@
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { StressAssessment, IStressAssessment } from '../../models/stress-assessment.model';
+import { connect, closeDatabase, clearDatabase } from '../utils/test-db';
 
-let mongoServer: MongoMemoryServer;
+// Add interface extension for static methods
+interface StressAssessmentModel extends mongoose.Model<IStressAssessment> {
+  getAverageStressLevel(
+    userId: mongoose.Types.ObjectId,
+    startDate: Date,
+    endDate?: Date
+  ): Promise<{ averageStressLevel: number; count: number }>;
+}
+
+// Add interface extension for virtual properties
+interface StressAssessmentDocument extends mongoose.Document {
+  stressCategory: string;
+}
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const uri = mongoServer.getUri();
-  await mongoose.connect(uri);
+  await connect();
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await closeDatabase();
 });
 
 beforeEach(async () => {
-  await StressAssessment.deleteMany({});
+  await clearDatabase();
 });
 
 describe('StressAssessment Model', () => {
@@ -192,7 +201,8 @@ describe('StressAssessment Model', () => {
         stressLevel: 3
       }).save();
       
-      expect(stressAssessment.stressCategory).toBe('low');
+      // Use type assertion to access virtual property
+      expect((stressAssessment as unknown as StressAssessmentDocument).stressCategory).toBe('low');
     });
 
     it('should calculate moderate stress category correctly', async () => {
@@ -201,7 +211,7 @@ describe('StressAssessment Model', () => {
         stressLevel: 6
       }).save();
       
-      expect(stressAssessment.stressCategory).toBe('moderate');
+      expect((stressAssessment as unknown as StressAssessmentDocument).stressCategory).toBe('moderate');
     });
 
     it('should calculate high stress category correctly', async () => {
@@ -210,7 +220,7 @@ describe('StressAssessment Model', () => {
         stressLevel: 8
       }).save();
       
-      expect(stressAssessment.stressCategory).toBe('high');
+      expect((stressAssessment as unknown as StressAssessmentDocument).stressCategory).toBe('high');
     });
   });
 
@@ -249,7 +259,7 @@ describe('StressAssessment Model', () => {
       const startDate = new Date('2023-06-01');
       const endDate = new Date('2023-06-10');
       
-      const result = await StressAssessment.getAverageStressLevel(userId, startDate, endDate);
+      const result = await (StressAssessment as unknown as StressAssessmentModel).getAverageStressLevel(userId, startDate, endDate);
       
       expect(result.averageStressLevel).toBe(5); // (3 + 7 + 5) / 3 = 5
       expect(result.count).toBe(3);
@@ -260,7 +270,7 @@ describe('StressAssessment Model', () => {
       const startDate = new Date('2023-06-01');
       const endDate = new Date('2023-06-10');
       
-      const result = await StressAssessment.getAverageStressLevel(differentUserId, startDate, endDate);
+      const result = await (StressAssessment as unknown as StressAssessmentModel).getAverageStressLevel(differentUserId, startDate, endDate);
       
       expect(result.averageStressLevel).toBe(0);
       expect(result.count).toBe(0);
@@ -270,7 +280,7 @@ describe('StressAssessment Model', () => {
       const startDate = new Date('2023-06-02');
       const endDate = new Date('2023-06-07');
       
-      const result = await StressAssessment.getAverageStressLevel(userId, startDate, endDate);
+      const result = await (StressAssessment as unknown as StressAssessmentModel).getAverageStressLevel(userId, startDate, endDate);
       
       expect(result.averageStressLevel).toBe(7); // Only the second assessment is in range
       expect(result.count).toBe(1);
