@@ -72,6 +72,7 @@ The documentation is organized into the following categories:
 - [Achievement System Implementation Plan](sprints/documentation/achievement-system-plan.md) - Achievement system implementation
 - [Stress Management Integration Plan](sprints/documentation/stress-management-plan.md) - Stress management integration
 - [Feature Integration Strategy](sprints/documentation/feature-integration-strategy.md) - Feature integration strategy
+- [Sprint Three Testing Integration](sprints/sprint-three-testing-integration.md) - Integration of testing tasks from TODO-TESTING.md
 
 #### Frontend Development Documentation
 - [Frontend Development Plan](sprints/documentation/frontend-development-plan.md) - Frontend development across Sprints Four-Six
