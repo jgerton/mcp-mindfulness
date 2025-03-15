@@ -13,7 +13,7 @@
 - Duration: 2 weeks
 
 ## Implementation Structure
-All implementation code should be placed in the appropriate directories under `/src`:
+All implementation code should be placed in the appropriate directories under `/src` and should use TypeScript (`.ts` extension):
 
 ### Core Directories
 - Models: `/src/models/` - Database schemas and models
@@ -29,9 +29,14 @@ All implementation code should be placed in the appropriate directories under `/
 - Tests: `/src/__tests__/` - Test files
 
 ### Core Files
-- `app.ts` - Express application setup
-- `config.ts` - Configuration variables
-- `index.ts` - Application entry point
+- `app.ts` - Express application setup (not `app.js`)
+- `config.ts` - Configuration variables (not `config.js`)
+- `index.ts` - Application entry point (not `index.js`)
+
+### TypeScript Standards
+- All new code should be written in TypeScript (`.ts` files)
+- JavaScript (`.js`) files in the `/src` directory should be converted to TypeScript when modified
+- Compiled JavaScript output should go to a `/dist` or `/build` directory (not in `/src`)
 
 Documentation and planning artifacts should remain in the `/project-planning` directory.
 

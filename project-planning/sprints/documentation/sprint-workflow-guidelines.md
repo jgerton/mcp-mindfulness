@@ -4,7 +4,7 @@
 This document outlines the recommended workflow for managing tasks during sprints. Following these guidelines will help maintain consistency, improve tracking, and ensure all team members are aligned on progress and next steps.
 
 ## Implementation Structure
-All implementation code should be placed in the appropriate directories under `/src`:
+All implementation code should be placed in the appropriate directories under `/src` and should use TypeScript (`.ts` extension):
 
 ### Core Directories
 - Models: `/src/models/` - Database schemas and models
@@ -23,6 +23,12 @@ All implementation code should be placed in the appropriate directories under `/
 - `app.ts` - Express application setup
 - `config.ts` - Configuration variables
 - `index.ts` - Application entry point
+
+### TypeScript Standards
+- All new code should be written in TypeScript (`.ts` files)
+- JavaScript (`.js`) files in the `/src` directory should be converted to TypeScript when modified
+- Compiled JavaScript output should go to a `/dist` or `/build` directory (not in `/src`)
+- Use TypeScript interfaces and types for all models and data structures
 
 Documentation and planning artifacts should remain in the `/project-planning` directory.
 
@@ -102,6 +108,18 @@ Use these guidelines to determine where to place new code:
 - **Config**: Environment-specific configuration
 - **Tests**: Test files that correspond to implementation files
 
+## JavaScript to TypeScript Migration
+
+When encountering JavaScript (`.js`) files in the `/src` directory:
+
+1. **New Features**: Always implement new features in TypeScript (`.ts`) files
+2. **Modifications**: When modifying an existing `.js` file, consider converting it to TypeScript:
+   - Rename the file from `.js` to `.ts`
+   - Add appropriate type annotations
+   - Fix any type errors
+   - Update imports/exports as needed
+3. **Imports**: When importing from a file that exists in both `.js` and `.ts` versions, always import from the `.ts` version
+
 ## Sprint Review Process
 
 At the end of each sprint:
@@ -136,7 +154,7 @@ When completing tasks that affect documentation:
 1. Review sprint-three.md to check progress and identify next tasks
 2. Select highest priority incomplete task
 3. Identify the correct implementation path (e.g., /src/models/ for models)
-4. Implement the task in the correct location
+4. Implement the task in the correct location using TypeScript (.ts)
 5. Commit code changes
 6. Update sprint-three.md to mark task as completed
 7. Commit sprint document update
