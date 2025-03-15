@@ -134,6 +134,9 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 - All high priority tasks completed
 - Unit and integration tests created for all new features
 - Test coverage meets minimum standards (80% for new code)
+- All tests passing before code is committed to the repository
+- Commit messages include "Tests passing" confirmation
+- CI pipeline checks successful for all pushed changes
 
 ## Related Documentation
 - [Testing Standards](../standards/testing-standards.md)

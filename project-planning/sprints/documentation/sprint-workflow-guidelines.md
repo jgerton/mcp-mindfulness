@@ -155,12 +155,14 @@ When completing tasks that affect documentation:
 2. Select highest priority incomplete task
 3. Identify the correct implementation path (e.g., /src/models/ for models)
 4. Implement the task in the correct location using TypeScript (.ts)
-5. Commit code changes
-6. Update sprint-three.md to mark task as completed
-7. Commit sprint document update
-8. Push changes
-9. Review sprint-three.md again to select next task
-10. Repeat
+5. Create or update tests for the implemented feature
+6. Run the test suite to verify all tests pass
+7. Commit code changes with "Tests passing" confirmation
+8. Update sprint-three.md to mark task as completed
+9. Commit sprint document update
+10. Push changes
+11. Review sprint-three.md again to select next task
+12. Repeat
 ```
 
 By following these guidelines, we can maintain a consistent workflow, improve visibility into sprint progress, and ensure that all team members are aligned on priorities and next steps.
@@ -218,5 +220,31 @@ When planning sprints, ensure the following test-related practices are followed:
    - Document test approach for complex features
    - Include test setup instructions in README files
    - Document mock strategies and test data generation
+
+### Pre-Commit Test Verification
+
+Before committing any code changes to the repository, the following steps must be completed:
+
+1. **Run Full Test Suite**
+   - Execute the complete test suite using `npm test`
+   - Verify all tests pass successfully
+   - Address any failing tests before committing
+
+2. **Test Coverage Verification**
+   - Check test coverage for modified code
+   - Ensure new code meets the minimum 80% coverage requirement
+   - Add additional tests if coverage is insufficient
+
+3. **Test Documentation**
+   - Document any test-specific considerations in code comments
+   - Update test documentation if test approach has changed
+
+4. **Commit Message Test Verification**
+   - Include "Tests passing" in commit messages to confirm verification
+   - Example: "Add user preferences feature - Tests passing"
+
+5. **Continuous Integration Checks**
+   - Monitor CI pipeline after pushing changes
+   - Address any test failures identified in the CI environment promptly
 
 By following these guidelines, we ensure that testing is an integral part of our development process, leading to more reliable and maintainable code. 
