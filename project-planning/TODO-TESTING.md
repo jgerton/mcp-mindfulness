@@ -23,7 +23,7 @@
 - [ ] Mobile-specific tests for meditation UI
 
 #### References
-- [Meditation Session Tests Documentation](./documentation/meditation-session-tests.md)
+- [Meditation Session Tests Documentation](./testing/documentation/meditation-session-tests.md)
 
 ### Breathing Exercise Tests
 - [x] Unit tests for BreathingService
@@ -34,7 +34,7 @@
 - [ ] Tests for breathing pattern effectiveness metrics
 
 #### References
-- [Breathing Exercise Tests Documentation](./documentation/breathing-exercise-tests.md)
+- [Breathing Exercise Tests Documentation](./testing/documentation/breathing-exercise-tests.md)
 
 ### PMR Exercise Tests
 - [x] API integration tests for PMR endpoints
@@ -45,7 +45,7 @@
 - [ ] Tests for muscle group effectiveness metrics
 
 #### References
-- [PMR Exercise Tests Documentation](./documentation/pmr-exercise-tests.md)
+- [PMR Exercise Tests Documentation](./testing/documentation/pmr-exercise-tests.md)
 
 ### User Authentication Tests
 - [x] Authentication controller tests
@@ -56,8 +56,18 @@
 - [ ] Session management tests
 
 #### References
-- [User Authentication Tests Documentation](./documentation/user-authentication-tests.md)
+- [User Authentication Tests Documentation](./testing/documentation/user-auth-tests.md)
+
+### Achievement Tests
+- [x] Unit tests for AchievementService
+- [x] Integration tests for achievement triggers
+- [ ] E2E tests for achievement notifications
+- [ ] Performance tests for achievement calculations
+- [ ] Tests for achievement progress tracking
+
+#### References
+- [Achievement Tests Documentation](./testing/documentation/achievement-tests-documentation.md)
 
 ## Documentation References
 
-For a complete overview of all test documentation, see the [Test Documentation Summary](./documentation/test-documentation-summary.md). 
+For a complete overview of all test documentation, see the [Test Documentation Summary](./testing/documentation/test-documentation-summary.md). 
