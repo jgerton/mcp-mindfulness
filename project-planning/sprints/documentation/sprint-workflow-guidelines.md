@@ -5,11 +5,24 @@ This document outlines the recommended workflow for managing tasks during sprint
 
 ## Implementation Structure
 All implementation code should be placed in the appropriate directories under `/src`:
-- Models: `/src/models/`
-- Controllers: `/src/controllers/`
-- Routes: `/src/routes/`
-- Services: `/src/services/`
-- Middleware: `/src/middleware/`
+
+### Core Directories
+- Models: `/src/models/` - Database schemas and models
+- Controllers: `/src/controllers/` - Request handlers and business logic
+- Routes: `/src/routes/` - API endpoint definitions
+- Services: `/src/services/` - Reusable business logic and third-party integrations
+- Middleware: `/src/middleware/` - Request processing middleware
+- Validations: `/src/validations/` - Input validation logic
+- Utils: `/src/utils/` - Utility functions and helpers
+- Socket: `/src/socket/` - WebSocket implementation
+- Components: `/src/components/` - Reusable components
+- Config: `/src/config/` - Configuration settings
+- Tests: `/src/__tests__/` - Test files
+
+### Core Files
+- `app.ts` - Express application setup
+- `config.ts` - Configuration variables
+- `index.ts` - Application entry point
 
 Documentation and planning artifacts should remain in the `/project-planning` directory.
 
@@ -66,10 +79,28 @@ When documenting tasks in sprint documents, always include the target file path:
 
 ```
 - [ ] Implement User model (`/src/models/user.model.ts`)
+- [ ] Create utility function for date formatting (`/src/utils/date-formatter.ts`)
+- [ ] Implement WebSocket event handler (`/src/socket/events/user-activity.ts`)
 - [ ] Update testing standards (`/project-planning/standards/testing-standards.md`)
 ```
 
 This ensures clarity about where implementation code should be placed versus documentation.
+
+## Directory Usage Guidelines
+
+Use these guidelines to determine where to place new code:
+
+- **Models**: Database schemas, interfaces, and model methods
+- **Controllers**: HTTP request handlers that use services and models
+- **Routes**: API endpoint definitions that connect to controllers
+- **Services**: Business logic that can be reused across controllers
+- **Middleware**: Functions that process requests before they reach routes
+- **Validations**: Input validation schemas and functions
+- **Utils**: Helper functions, formatters, and utilities
+- **Socket**: WebSocket event handlers and socket.io implementation
+- **Components**: Reusable UI components (for fullstack applications)
+- **Config**: Environment-specific configuration
+- **Tests**: Test files that correspond to implementation files
 
 ## Sprint Review Process
 
