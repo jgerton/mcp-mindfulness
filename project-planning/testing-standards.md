@@ -308,6 +308,131 @@ beforeEach(async () => {
 });
 ```
 
+### TypeScript Testing Best Practices
+
+#### Handling Type Errors in Tests
+
+When working with Mongoose documents and TypeScript, you'll often encounter type errors related to property access. Here are best practices to avoid common issues:
+
+1. **Properly Type Error Variables**:
+   ```typescript
+   // INCORRECT: Untyped error variable
+   let error;
+   try {
+     await model.save();
+   } catch (err) {
+     error = err;
+   }
+   
+   // CORRECT: Explicitly type the error variable
+   let error: any;
+   try {
+     await model.save();
+   } catch (err) {
+     error = err;
+   }
+   ```
+
+2. **Interface Extensions for Mongoose Documents**:
+   ```typescript
+   // Define interface extensions for documents with custom properties
+   interface IAchievementDocument extends mongoose.Document, IAchievement {
+     progress: number;
+     target: number;
+     completed: boolean;
+     completedAt: Date;
+   }
+   
+   // Use the extended interface in tests
+   const achievement = await Achievement.findById(id) as IAchievementDocument;
+   expect(achievement.progress).toBe(expectedProgress);
+   ```
+
+3. **Type Assertions for Mongoose Methods**:
+   ```typescript
+   // INCORRECT: Direct property access without type assertion
+   const result = await Model.findById(id);
+   expect(result.customProperty).toBe(expectedValue);
+   
+   // CORRECT: Use type assertion
+   const result = await Model.findById(id) as IModelDocument;
+   expect(result.customProperty).toBe(expectedValue);
+   ```
+
+4. **Consistent Interface Definitions**:
+   - Ensure interfaces in models match their implementations
+   - Keep property names consistent across the codebase
+   - Document virtual properties in interfaces
+
+5. **Type Guards for Null Checks**:
+   ```typescript
+   // INCORRECT: No null check
+   const result = await Model.findById(nonExistentId);
+   expect(result.property).toBe(value); // May cause null reference error
+   
+   // CORRECT: Use type guard
+   const result = await Model.findById(nonExistentId);
+   expect(result).not.toBeNull();
+   if (result) {
+     expect(result.property).toBe(value);
+   }
+   ```
+
+#### Common TypeScript Errors and Solutions
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `Property 'X' does not exist on type 'Document<unknown, {}, IModel>'` | Missing property in interface | Add the property to the interface definition |
+| `Subsequent property declarations must have the same type` | Conflicting type definitions | Ensure consistent types across declarations |
+| `Type 'X' is not assignable to type 'Y'` | Type mismatch | Use proper type assertions or update interface |
+| `Object is possibly null or undefined` | Missing null check | Add null check or use optional chaining |
+| `Cannot invoke an object which is possibly undefined` | Calling method on possibly undefined object | Add null check before method call |
+
+#### Test Utility Functions for Type Handling
+
+Create utility functions in your test helpers to handle common type operations:
+
+```typescript
+// src/__tests__/utils/test-utils.ts
+
+/**
+ * Type-safe error handler for testing validation errors
+ */
+export async function expectValidationError<T>(
+  action: () => Promise<T>,
+  expectedErrorFields: string[]
+): Promise<void> {
+  let error: any;
+  try {
+    await action();
+    fail('Expected validation error but none was thrown');
+  } catch (err) {
+    error = err;
+  }
+  
+  expect(error).toBeDefined();
+  expect(error.name).toBe('ValidationError');
+  
+  for (const field of expectedErrorFields) {
+    expect(error.errors[field]).toBeDefined();
+  }
+}
+
+/**
+ * Type-safe document finder with proper typing
+ */
+export async function findDocumentById<T extends mongoose.Document>(
+  model: mongoose.Model<T>,
+  id: mongoose.Types.ObjectId | string
+): Promise<T> {
+  const document = await model.findById(id);
+  if (!document) {
+    throw new Error(`Document not found with id: ${id}`);
+  }
+  return document;
+}
+```
+
 ### Authentication & Authorization Testing
 
 #### Authentication Testing

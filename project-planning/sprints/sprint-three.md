@@ -49,6 +49,23 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 - [x] Implement achievement progress tracking (in achievement service)
 - [x] Connect achievements to user activities (integration between services)
 
+### Test Debt Resolution
+- [ ] Fix TypeScript errors in achievement service (`/src/services/achievement.service.ts`)
+  - Add missing properties to interfaces
+  - Ensure proper type definitions for achievement properties (progress, target, completed, etc.)
+- [ ] Resolve interface mismatches in meditation session model (`/src/models/meditation-session.model.ts`)
+  - Add missing properties to IMeditationSession interface (moodBefore, moodAfter, durationCompleted)
+  - Ensure consistency between interface and implementation
+- [ ] Fix auth middleware type conflicts (`/src/middleware/auth.middleware.ts`)
+  - Resolve type conflicts between project-planning and src implementations
+- [ ] Update test utilities to handle type casting properly (`/src/__tests__/utils/test-utils.ts`)
+  - Add proper type assertions for error handling
+  - Create helper functions for common test patterns
+- [ ] Document common testing errors and solutions in testing standards (`/project-planning/testing-standards.md`)
+  - Add section on TypeScript type handling in tests
+  - Include examples of proper error handling and type assertions
+  - Document interface consistency requirements
+
 ### Meditation Session Enhancements
 - [x] Complete MeditationSession model implementation (`/src/models/meditation-session.model.ts`)
 - [x] Add session analytics data structures (in meditation session controller)
@@ -130,6 +147,11 @@ To align with our updated workflow guidelines, we need to implement tests for fe
 6. ✅ Develop authentication integration for new endpoints (`/src/middleware/auth.middleware.ts`)
 7. ✅ Update testing standards document (`/project-planning/standards/testing-standards.md`)
 8. ⬜ Create unit and integration tests for new features (`/src/__tests__/`)
+9. ⬜ Fix TypeScript errors in achievement service (`/src/services/achievement.service.ts`)
+10. ⬜ Resolve interface mismatches in meditation session model (`/src/models/meditation-session.model.ts`)
+11. ⬜ Fix auth middleware type conflicts (`/src/middleware/auth.middleware.ts`)
+12. ⬜ Update test utilities to handle type casting properly (`/src/__tests__/utils/test-utils.ts`)
+13. ⬜ Document common testing errors and solutions in testing standards (`/project-planning/testing-standards.md`)
 
 ### Medium Priority Tasks
 1. ✅ Implement achievement progress tracking (`/src/services/achievement.service.ts`)
@@ -169,6 +191,10 @@ To align with our updated workflow guidelines, we need to implement tests for fe
 - All tests passing before code is committed to the repository
 - Commit messages include "Tests passing" confirmation
 - CI pipeline checks successful for all pushed changes
+- TypeScript errors in existing tests resolved
+- Interface consistency maintained between models and tests
+- Testing standards updated with common error solutions
+- Test utilities enhanced to handle type assertions properly
 
 ## Related Documentation
 - [Testing Standards](../standards/testing-standards.md)
@@ -177,6 +203,7 @@ To align with our updated workflow guidelines, we need to implement tests for fe
 - [Sprint Two Review](./sprint-two-review.md)
 - [TODO Testing](../testing/TODO-TESTING.md)
 - [Sprint Three Testing Integration](./sprint-three-testing-integration.md)
+- [Test Debt Resolution Plan](../testing/test-debt-resolution.md)
 
 ## Sprint Three Documentation
 - [Achievement System Implementation Plan](./documentation/achievement-system-plan.md)
