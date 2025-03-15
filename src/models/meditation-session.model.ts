@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 import { AchievementService, AchievementData } from '../services/achievement.service';
 import { 
   IBaseWellnessSession, 
@@ -7,137 +7,182 @@ import {
   createWellnessSessionSchema 
 } from './base-wellness-session.model';
 
-export interface IMeditationSession extends IBaseWellnessSession {
-  meditationId: mongoose.Types.ObjectId;
-  durationCompleted: number;
-  interruptions: number;
-  streakDay?: number;
-  maintainedStreak?: boolean;
-  focusRating?: number; // 1-5 rating of focus quality
-  guidanceFollowed?: boolean; // whether user followed guided meditation
-  completed?: boolean; // Added for backward compatibility
-  completionPercentage?: number; // Added for backward compatibility
-  isCompleted?: boolean; // Added for backward compatibility
-  isStreakEligible?: boolean; // Whether the session qualifies for streak counting
+/**
+ * Interface representing a MeditationSession document in MongoDB
+ */
+export interface IMeditationSession extends Document {
+  userId: mongoose.Types.ObjectId;
+  title: string;
+  description?: string;
+  duration: number; // in seconds
+  completed: boolean;
+  startTime: Date;
+  endTime?: Date;
+  type: 'guided' | 'unguided' | 'timed';
+  guidedMeditationId?: mongoose.Types.ObjectId;
+  tags?: string[];
+  mood?: {
+    before?: 'very_negative' | 'negative' | 'neutral' | 'positive' | 'very_positive';
+    after?: 'very_negative' | 'negative' | 'neutral' | 'positive' | 'very_positive';
+  };
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Define meditation-specific fields
-const meditationFields = {
-  meditationId: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'Meditation', 
-    required: true
-  },
-  durationCompleted: { 
-    type: Number,
-    required: true,
-    min: [0, 'Completed duration cannot be negative'],
-    validate: {
-      validator: function(this: IMeditationSession, value: number) {
-        return value <= this.duration;
+/**
+ * Schema for the MeditationSession model
+ */
+const MeditationSessionSchema: Schema = new Schema(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User ID is required']
+    },
+    title: {
+      type: String,
+      required: [true, 'Session title is required'],
+      trim: true,
+      maxlength: [100, 'Session title cannot be more than 100 characters']
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Session description cannot be more than 500 characters']
+    },
+    duration: {
+      type: Number,
+      required: [true, 'Session duration is required'],
+      min: [1, 'Session duration must be at least 1 second']
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    startTime: {
+      type: Date,
+      required: [true, 'Session start time is required']
+    },
+    endTime: {
+      type: Date,
+      validate: {
+        validator: function(this: IMeditationSession, value: Date) {
+          return !value || value > this.startTime;
+        },
+        message: 'End time must be after start time'
+      }
+    },
+    type: {
+      type: String,
+      required: [true, 'Session type is required'],
+      enum: {
+        values: ['guided', 'unguided', 'timed'],
+        message: 'Session type must be one of: guided, unguided, timed'
+      }
+    },
+    guidedMeditationId: {
+      type: Schema.Types.ObjectId,
+      ref: 'GuidedMeditation',
+      validate: {
+        validator: function(this: IMeditationSession, value: mongoose.Types.ObjectId) {
+          return this.type !== 'guided' || value;
+        },
+        message: 'Guided meditation ID is required for guided sessions'
+      }
+    },
+    tags: [{
+      type: String,
+      trim: true,
+      maxlength: [30, 'Tag cannot be more than 30 characters']
+    }],
+    mood: {
+      before: {
+        type: String,
+        enum: {
+          values: ['very_negative', 'negative', 'neutral', 'positive', 'very_positive'],
+          message: 'Mood must be one of: very_negative, negative, neutral, positive, very_positive'
+        }
       },
-      message: 'Completed duration cannot exceed planned duration'
+      after: {
+        type: String,
+        enum: {
+          values: ['very_negative', 'negative', 'neutral', 'positive', 'very_positive'],
+          message: 'Mood must be one of: very_negative, negative, neutral, positive, very_positive'
+        }
+      }
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Notes cannot be more than 1000 characters']
     }
   },
-  interruptions: { 
-    type: Number, 
-    required: true,
-    default: 0,
-    min: [0, 'Interruptions cannot be negative']
-  },
-  streakDay: {
-    type: Number,
-    min: [1, 'Streak day must be positive']
-  },
-  maintainedStreak: {
-    type: Boolean,
-    default: false
-  },
-  focusRating: {
-    type: Number,
-    min: [1, 'Focus rating must be between 1 and 5'],
-    max: [5, 'Focus rating must be between 1 and 5']
-  },
-  guidanceFollowed: {
-    type: Boolean
-  },
-  completed: {
-    type: Boolean,
-    default: false
+  {
+    timestamps: true
   }
+);
+
+// Create indexes for better query performance
+MeditationSessionSchema.index({ userId: 1, startTime: -1 });
+MeditationSessionSchema.index({ userId: 1, completed: 1 });
+MeditationSessionSchema.index({ tags: 1 });
+
+// Virtual for calculating session duration in minutes
+MeditationSessionSchema.virtual('durationMinutes').get(function(this: IMeditationSession) {
+  return Math.round(this.duration / 60);
+});
+
+// Method to mark session as completed
+MeditationSessionSchema.methods.completeSession = function(this: IMeditationSession, endTime: Date = new Date()) {
+  this.completed = true;
+  this.endTime = endTime;
+  
+  // Calculate actual duration if it differs from planned duration
+  const actualDuration = Math.round((endTime.getTime() - this.startTime.getTime()) / 1000);
+  if (actualDuration > 0) {
+    this.duration = actualDuration;
+  }
+  
+  return this.save();
 };
 
-// Create schema using base wellness session
-const meditationSessionSchema = createWellnessSessionSchema<IMeditationSession>(meditationFields);
-
 // Add indexes
-meditationSessionSchema.index({ userId: 1 });
-meditationSessionSchema.index({ meditationId: 1 });
+MeditationSessionSchema.index({ userId: 1 });
+MeditationSessionSchema.index({ guidedMeditationId: 1 });
 
 // Add meditation-specific methods
-meditationSessionSchema.methods.processAchievements = async function(this: IMeditationSession): Promise<void> {
-  if (!this.isCompleted && this.status !== WellnessSessionStatus.Completed) {
+MeditationSessionSchema.methods.processAchievements = async function(this: IMeditationSession): Promise<void> {
+  if (!this.completed && this.type !== 'guided') {
     return;
   }
 
   const achievementData: AchievementData = {
     userId: this.userId,
     sessionId: new mongoose.Types.ObjectId((this._id as mongoose.Types.ObjectId).toString()),
-    meditationId: this.meditationId,
-    duration: this.durationCompleted,
-    focusRating: this.focusRating,
-    interruptions: this.interruptions,
-    streakMaintained: this.maintainedStreak,
-    streakDay: this.streakDay,
-    moodImprovement: this.moodAfter && this.moodBefore ? 
-      getMoodImprovement(this.moodBefore, this.moodAfter) : undefined
+    meditationId: this.guidedMeditationId,
+    duration: this.duration,
+    focusRating: this.mood?.after ? getMoodImprovement(this.mood.before, this.mood.after) : undefined,
+    interruptions: 0,
+    streakMaintained: false,
+    streakDay: 0,
+    moodImprovement: this.mood?.after ? getMoodImprovement(this.mood.before, this.mood.after) : undefined
   };
 
   await AchievementService.processMeditationAchievements(achievementData);
 };
 
 // Add virtual fields
-meditationSessionSchema.virtual('completionPercentage').get(function(this: IMeditationSession) {
-  return Math.round((this.durationCompleted / this.duration) * 100);
+MeditationSessionSchema.virtual('completionPercentage').get(function(this: IMeditationSession) {
+  return Math.round((this.duration / this.duration) * 100);
 });
 
-meditationSessionSchema.virtual('isStreakEligible').get(function(this: IMeditationSession) {
-  const completionPercentage = Math.round((this.durationCompleted / this.duration) * 100);
-  return (this.isCompleted || this.status === WellnessSessionStatus.Completed) && 
+MeditationSessionSchema.virtual('isStreakEligible').get(function(this: IMeditationSession) {
+  const completionPercentage = Math.round((this.duration / this.duration) * 100);
+  return this.completed && 
     completionPercentage >= 80 && // At least 80% completed
-    (this.focusRating === undefined || this.focusRating >= 3); // Good focus if rated
+    (this.mood?.after ? getMoodImprovement(this.mood.before, this.mood.after) : undefined) >= 0; // Good focus if rated
 });
-
-// Add getter for isCompleted for backward compatibility
-meditationSessionSchema.virtual('isCompleted').get(function(this: IMeditationSession) {
-  return this.status === WellnessSessionStatus.Completed || this.completed === true;
-});
-
-// Override complete method to handle meditation-specific logic
-meditationSessionSchema.methods.complete = async function(
-  this: IMeditationSession,
-  moodAfter?: WellnessMoodState,
-  focusRating?: number
-): Promise<void> {
-  if (!this.canTransitionTo(WellnessSessionStatus.Completed)) {
-    throw new Error(`Cannot complete session in ${this.status} status`);
-  }
-
-  this.status = WellnessSessionStatus.Completed;
-  this.completed = true;
-  this.endTime = new Date();
-  this.durationCompleted = this.getActualDuration();
-  
-  if (moodAfter) {
-    this.moodAfter = moodAfter;
-  }
-  if (focusRating !== undefined) {
-    this.focusRating = focusRating;
-  }
-
-  await this.save();
-  await this.processAchievements();
-};
 
 // Add helper function for mood improvement calculation
 function getMoodImprovement(before: WellnessMoodState, after: WellnessMoodState): number {
@@ -153,4 +198,7 @@ function getMoodImprovement(before: WellnessMoodState, after: WellnessMoodState)
   return moodValues[after] - moodValues[before];
 }
 
-export const MeditationSession = mongoose.model<IMeditationSession>('MeditationSession', meditationSessionSchema); 
+// Create the model
+export const MeditationSession = mongoose.model<IMeditationSession>('MeditationSession', MeditationSessionSchema);
+
+export default MeditationSession; 
