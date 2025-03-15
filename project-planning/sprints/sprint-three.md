@@ -80,6 +80,38 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 - [ ] Create unit tests for achievement service (`/src/__tests__/services/achievement.service.test.ts`)
 - [ ] Implement tests for authentication integration with new endpoints (`/src/__tests__/middleware/auth.middleware.test.ts`)
 
+### Test Catch-Up Plan
+To align with our updated workflow guidelines, we need to implement tests for features that have already been developed:
+
+#### Immediate Priority (Must Complete This Sprint)
+- [ ] Achievement Model Tests (`/src/__tests__/models/achievement.model.test.ts`)
+  - Test schema validation
+  - Test required fields
+  - Test default values
+  - Test relationships with User model
+
+- [ ] MeditationSession Model Tests (`/src/__tests__/models/meditation-session.model.test.ts`)
+  - Test schema validation
+  - Test duration calculations
+  - Test relationships with User model
+  - Test analytics data structures
+
+- [ ] StressAssessment Model Tests (`/src/__tests__/models/stress-assessment.model.test.ts`)
+  - Test schema validation
+  - Test stress level calculations
+  - Test relationships with User model
+
+#### Secondary Priority (Complete if Time Permits)
+- [ ] Achievement API Endpoint Tests (`/src/__tests__/routes/achievement.routes.test.ts`)
+- [ ] MeditationSession API Endpoint Tests (`/src/__tests__/routes/meditation-session.routes.test.ts`)
+- [ ] Achievement Service Tests (`/src/__tests__/services/achievement.service.test.ts`)
+
+#### Test Implementation Strategy
+1. Focus on unit tests for models first (highest priority)
+2. Implement integration tests for API endpoints second
+3. Create service tests last
+4. Ensure all new code follows the "tests first" approach going forward
+
 ### Backend Tasks
 - [x] Create TypeScript migration plan for remaining JavaScript files
   - [x] Create migration plan document
