@@ -76,6 +76,7 @@ The documentation is organized into the following categories:
 #### Frontend Development Documentation
 - [Frontend Development Plan](sprints/documentation/frontend-development-plan.md) - Frontend development across Sprints Four-Six
 - [UI Design System](sprints/documentation/ui-design-system.md) - UI design system for Sprint Four
+- [UI Component Dependencies](sprints/documentation/ui-component-dependencies.md) - UI component dependencies and implementation plan
 
 ## Documentation Updates
 
