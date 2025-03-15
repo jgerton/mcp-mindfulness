@@ -70,6 +70,16 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 - [x] Create Meditation Session tests tracking issue (`/project-planning/testing/tracking/meditation-session-tests-tracking.md`)
 - [ ] Update implementation status with test information (`/project-planning/workflows/implementation-status.md`)
 
+### Test Implementation
+- [ ] Create unit tests for Achievement model (`/src/__tests__/models/achievement.model.test.ts`)
+- [ ] Implement integration tests for Achievement API endpoints (`/src/__tests__/routes/achievement.routes.test.ts`)
+- [ ] Create unit tests for MeditationSession model (`/src/__tests__/models/meditation-session.model.test.ts`)
+- [ ] Implement integration tests for MeditationSession API endpoints (`/src/__tests__/routes/meditation-session.routes.test.ts`)
+- [ ] Create unit tests for StressAssessment model (`/src/__tests__/models/stress-assessment.model.test.ts`)
+- [ ] Implement integration tests for stress management API endpoints (`/src/__tests__/routes/stress.routes.test.ts`)
+- [ ] Create unit tests for achievement service (`/src/__tests__/services/achievement.service.test.ts`)
+- [ ] Implement tests for authentication integration with new endpoints (`/src/__tests__/middleware/auth.middleware.test.ts`)
+
 ### Backend Tasks
 - [x] Create TypeScript migration plan for remaining JavaScript files
   - [x] Create migration plan document
@@ -87,6 +97,7 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 5. ✅ Implement data validation for all models (`/src/models/`, `/src/validations/`)
 6. ✅ Develop authentication integration for new endpoints (`/src/middleware/auth.middleware.ts`)
 7. ✅ Update testing standards document (`/project-planning/standards/testing-standards.md`)
+8. ⬜ Create unit and integration tests for new features (`/src/__tests__/`)
 
 ### Medium Priority Tasks
 1. ✅ Implement achievement progress tracking (`/src/services/achievement.service.ts`)
@@ -95,6 +106,8 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 4. ⬜ Implement user preference API endpoints (`/src/controllers/user-preference.controller.ts`, `/src/routes/user-preference.routes.ts`)
 5. ⬜ Develop stress trigger identification (`/src/services/stress-analysis.service.ts`)
 6. ✅ Create tracking issues for skipped tests (`/project-planning/testing/tracking/`)
+7. ⬜ Implement tests for achievement service (`/src/__tests__/services/achievement.service.test.ts`)
+8. ⬜ Create tests for meditation session endpoints (`/src/__tests__/routes/meditation-session.routes.test.ts`)
 
 ### Low Priority Tasks
 1. ✅ Add advanced session analytics (`/src/controllers/meditation-session.controller.ts`)
@@ -102,13 +115,14 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 3. ⬜ Implement API documentation with Swagger (in route files)
 4. ⬜ Develop stress management techniques library (`/src/services/stress-management.service.ts`)
 5. ⬜ Update work-flow.md with testing workflow improvements (`/project-planning/workflows/work-flow.md`)
+6. ⬜ Create tests for stress assessment model (`/src/__tests__/models/stress-assessment.model.test.ts`)
 
 ## Task Assignments
-- [TEAM MEMBER 1]: Achievement system implementation
-- [TEAM MEMBER 2]: Meditation session enhancements
-- [TEAM MEMBER 3]: Stress management integration
+- [TEAM MEMBER 1]: Achievement system implementation and testing
+- [TEAM MEMBER 2]: Meditation session enhancements and testing
+- [TEAM MEMBER 3]: Stress management integration and testing
 - [TEAM MEMBER 4]: API integration and testing
-- [TEAM MEMBER 5]: Testing standards integration
+- [TEAM MEMBER 5]: Testing standards integration and test framework maintenance
 
 ## Sprint Review Criteria
 - Achievement system core functionality implemented
@@ -118,6 +132,8 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 - Testing standards updated with lessons learned
 - Tracking issues created for skipped tests
 - All high priority tasks completed
+- Unit and integration tests created for all new features
+- Test coverage meets minimum standards (80% for new code)
 
 ## Related Documentation
 - [Testing Standards](../standards/testing-standards.md)

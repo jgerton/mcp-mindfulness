@@ -163,4 +163,60 @@ When completing tasks that affect documentation:
 10. Repeat
 ```
 
-By following these guidelines, we can maintain a consistent workflow, improve visibility into sprint progress, and ensure that all team members are aligned on priorities and next steps. 
+By following these guidelines, we can maintain a consistent workflow, improve visibility into sprint progress, and ensure that all team members are aligned on priorities and next steps.
+
+## Test-Driven Development Approach
+
+### Test Creation Guidelines
+
+1. **Tests First Approach**
+   - For new features, create test files before or alongside implementation
+   - Define expected behavior through tests before writing code
+   - Use tests to guide the implementation process
+
+2. **Test Coverage Requirements**
+   - All new features must have corresponding tests
+   - Minimum 80% code coverage for new code
+   - Both unit and integration tests should be implemented
+
+3. **Test Types to Include**
+   - **Unit Tests**: For models, services, and utility functions
+   - **Integration Tests**: For API endpoints and service interactions
+   - **Authentication Tests**: For protected routes and resources
+   - **Validation Tests**: For input validation and error handling
+
+4. **Test File Organization**
+   - Place tests in `/src/__tests__/` directory
+   - Mirror the source directory structure (e.g., `/src/__tests__/models/` for model tests)
+   - Name test files with `.test.ts` suffix (e.g., `user.model.test.ts`)
+
+5. **Test Implementation Timing**
+   - Create tests during the same sprint as feature implementation
+   - Update tests when modifying existing features
+   - Include test tasks in sprint planning for each feature
+
+### Test-Related Sprint Planning
+
+When planning sprints, ensure the following test-related practices are followed:
+
+1. **Include Test Tasks**
+   - Add specific test implementation tasks for each new feature
+   - Allocate time for test creation and maintenance
+   - Consider test complexity when estimating task duration
+
+2. **Test Review Process**
+   - Review test coverage during code reviews
+   - Ensure tests follow established patterns and standards
+   - Verify that tests adequately cover edge cases and error scenarios
+
+3. **Test Maintenance**
+   - Update tests when modifying existing features
+   - Refactor tests when refactoring code
+   - Address flaky or failing tests promptly
+
+4. **Test Documentation**
+   - Document test approach for complex features
+   - Include test setup instructions in README files
+   - Document mock strategies and test data generation
+
+By following these guidelines, we ensure that testing is an integral part of our development process, leading to more reliable and maintainable code. 
