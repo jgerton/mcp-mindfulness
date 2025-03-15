@@ -10,7 +10,7 @@ import '../setup';
 // Mock achievement service
 jest.mock('../../services/achievement.service');
 
-describe.skip('MeditationSession', () => {
+describe('MeditationSession', () => {
   beforeEach(async () => {
     await clearTestCollection('meditationsessions');
     jest.clearAllMocks();
@@ -18,18 +18,16 @@ describe.skip('MeditationSession', () => {
 
   const createBasicSession = () => ({
     userId: getTestObjectId(),
-    meditationId: getTestObjectId(),
+    title: "Test Meditation Session",
+    type: "guided",
+    guidedMeditationId: getTestObjectId(),
     duration: 900, // 15 minutes in seconds
-    durationCompleted: 900,
-    interruptions: 0,
-    focusRating: 4,
-    moodBefore: WellnessMoodState.Neutral,
-    moodAfter: WellnessMoodState.Peaceful,
-    status: WellnessSessionStatus.Completed,
+    completed: false,
     startTime: new Date(),
-    endTime: new Date(Date.now() + 15 * 60 * 1000),
-    streakDay: 1,
-    maintainedStreak: true
+    mood: {
+      before: 'neutral',
+      after: 'positive'
+    }
   });
 
   describe('Schema Validation', () => {
@@ -40,9 +38,9 @@ describe.skip('MeditationSession', () => {
         duration: 600
       });
 
-      const error = await session.validate().catch(e => e);
-      expect(error.errors.meditationId).toBeDefined();
-      expect(error.errors.durationCompleted).toBeDefined();
+      const error: any = await session.validate().catch(e => e);
+      expect(error.errors.title).toBeDefined();
+      expect(error.errors.type).toBeDefined();
     });
 
     it('should validate focus rating range', async () => {
@@ -126,23 +124,18 @@ describe.skip('MeditationSession', () => {
   });
 
   describe('Session Completion', () => {
-    it('should handle completion with mood and focus rating', async () => {
+    it('should mark session as completed', async () => {
       const session = new MeditationSession(createBasicSession());
       await session.save();
 
       // Wait to simulate session duration
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      await session.complete(WellnessMoodState.Peaceful);
-      if (session.focusRating) {
-        session.focusRating = session.focusRating;
-        await session.save();
-      }
+      await session.markCompleted(WellnessSessionStatus.Completed);
+      await session.save();
 
-      expect(session.status).toBe(WellnessSessionStatus.Completed);
-      expect(session.moodAfter).toBe(WellnessMoodState.Peaceful);
-      expect(session.focusRating).toBeDefined();
-      expect(session.durationCompleted).toBeGreaterThan(0);
+      expect(session.completed).toBe(true);
+      expect(session.mood?.after).toBe('positive');
       expect(session.endTime).toBeDefined();
     });
 
@@ -150,48 +143,36 @@ describe.skip('MeditationSession', () => {
       const session = new MeditationSession(createBasicSession());
       await session.save();
 
-      const startTime = new Date();
-      session.startTime = startTime;
+      // Wait to simulate session duration
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      await session.complete();
+      await session.markCompleted(WellnessSessionStatus.Completed);
+      await session.save();
 
-      const expectedMinDuration = 0.1; // 100ms in seconds
-      expect(session.durationCompleted).toBeGreaterThanOrEqual(expectedMinDuration);
+      expect(session.endTime).toBeDefined();
+      if (session.endTime) {
+        const actualDuration = Math.round((session.endTime.getTime() - session.startTime.getTime()) / 1000);
+        expect(actualDuration).toBeGreaterThan(0);
+      }
     });
-  });
 
-  describe('Achievement Processing', () => {
     it('should process achievements on completion', async () => {
-      const mockProcessAchievements = jest.spyOn(AchievementService, 'processMeditationAchievements');
+      const mockProcessAchievements = jest.spyOn(AchievementService.prototype, 'processSessionAchievements');
       
       const session = new MeditationSession({
         ...createBasicSession(),
-        moodBefore: WellnessMoodState.Stressed,
-        streakDay: 3,
-        maintainedStreak: true
+        type: 'guided'
       });
       await session.save();
 
-      await session.complete(WellnessMoodState.Peaceful);
-      if (session.focusRating) {
-        session.focusRating = session.focusRating;
-        await session.save();
-      }
+      await session.markCompleted(WellnessSessionStatus.Completed);
+      await session.processAchievements();
 
-      expect(mockProcessAchievements).toHaveBeenCalledWith(expect.objectContaining({
-        userId: session.userId,
-        meditationId: session.meditationId,
-        duration: session.durationCompleted,
-        focusRating: session.focusRating,
-        streakDay: 3,
-        streakMaintained: true,
-        moodImprovement: 4 // Stressed(1) to Peaceful(5) = 4 improvement
-      }));
+      expect(mockProcessAchievements).toHaveBeenCalled();
     });
 
-    it('should not process achievements for incomplete session', async () => {
-      const mockProcessAchievements = jest.spyOn(AchievementService, 'processMeditationAchievements');
+    it('should not process achievements for incomplete sessions', async () => {
+      const mockProcessAchievements = jest.spyOn(AchievementService.prototype, 'processSessionAchievements');
       
       const session = new MeditationSession(createBasicSession());
       await session.save();

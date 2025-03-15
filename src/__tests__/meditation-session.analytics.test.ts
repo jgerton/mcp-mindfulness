@@ -32,7 +32,9 @@ describe('Meditation Session Analytics', () => {
       await MeditationSession.create([
         {
           userId,
-          meditationId,
+          title: 'Morning Meditation',
+          type: 'guided',
+          guidedMeditationId: meditationId,
           startTime: new Date('2024-03-12T06:00:00'),
           endTime: new Date('2024-03-12T06:15:00'),
           duration: 15,
@@ -45,7 +47,9 @@ describe('Meditation Session Analytics', () => {
         },
         {
           userId,
-          meditationId,
+          title: 'Afternoon Meditation',
+          type: 'guided',
+          guidedMeditationId: meditationId,
           startTime: new Date('2024-03-12T12:00:00'),
           endTime: new Date('2024-03-12T12:20:00'),
           duration: 20,
@@ -58,7 +62,9 @@ describe('Meditation Session Analytics', () => {
         },
         {
           userId,
-          meditationId,
+          title: 'Evening Meditation',
+          type: 'guided',
+          guidedMeditationId: meditationId,
           startTime: new Date('2024-03-12T18:00:00'),
           endTime: new Date('2024-03-12T18:30:00'),
           duration: 30,
@@ -110,7 +116,9 @@ describe('Meditation Session Analytics', () => {
       await MeditationSession.create([
         {
           userId,
-          meditationId,
+          title: 'Short Meditation',
+          type: 'guided',
+          guidedMeditationId: meditationId,
           startTime: new Date(),
           endTime: new Date(Date.now() + 5 * 60000),
           duration: 5,
@@ -123,7 +131,9 @@ describe('Meditation Session Analytics', () => {
         },
         {
           userId,
-          meditationId,
+          title: 'Medium Meditation',
+          type: 'guided',
+          guidedMeditationId: meditationId,
           startTime: new Date(),
           endTime: new Date(Date.now() + 15 * 60000),
           duration: 15,
@@ -136,7 +146,9 @@ describe('Meditation Session Analytics', () => {
         },
         {
           userId,
-          meditationId,
+          title: 'Long Meditation',
+          type: 'guided',
+          guidedMeditationId: meditationId,
           startTime: new Date(),
           endTime: new Date(Date.now() + 20 * 60000),
           duration: 20,
@@ -149,7 +161,9 @@ describe('Meditation Session Analytics', () => {
         },
         {
           userId,
-          meditationId,
+          title: 'Extra Long Meditation',
+          type: 'guided',
+          guidedMeditationId: meditationId,
           startTime: new Date(),
           endTime: new Date(Date.now() + 30 * 60000),
           duration: 30,

@@ -58,7 +58,7 @@ export class MeditationSessionService {
 
     return {
       sessionId: session._id.toString(),
-      status: session.status
+      status: session.status || WellnessSessionStatus.Active
     };
   }
 
@@ -206,10 +206,12 @@ export class MeditationSessionService {
     userId: mongoose.Types.ObjectId;
     duration: number;
     type: string;
+    title?: string;
   }): Promise<IMeditationSession> {
     const session = await MeditationSession.create({
       userId: data.userId,
-      meditationId: new mongoose.Types.ObjectId(), // Generate a temporary ID
+      title: data.title || 'Meditation Session',
+      type: data.type,
       startTime: new Date(),
       duration: data.duration,
       durationCompleted: 0,
