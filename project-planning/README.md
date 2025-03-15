@@ -43,6 +43,8 @@ The documentation is organized into the following categories:
 - [Example Controller with Error Handling](testing/examples/example-controller-with-error-handling.ts)
 - [Example MongoDB Test](testing/examples/example-mongodb-test.ts)
 - [Example Test with Authentication](testing/examples/example-test-with-authentication.test.ts)
+- [Example API Error Handling](testing/examples/example-api-error-handling.ts)
+- [Example Middleware Test](testing/examples/example-middleware-test.test.ts)
 
 ### Workflows
 - [Work Flow](workflows/work-flow.md) - Development workflow

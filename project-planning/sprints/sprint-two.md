@@ -81,7 +81,7 @@
 ## Sprint Two Documentation
 - [Documentation Plan](./documentation/documentation-plan.md)
 - [Documentation Standards](../standards/documentation-standards.md)
-- [Test Implementation Plan](../testing/documentation/test-documentation-summary.md)
+- [Test Implementation Plan](../testing/test-implementation-roadmap.md)
 - [Directory Structure Plan](./documentation/directory-structure-plan.md)
 - [Achievement Tests Documentation](../testing/documentation/achievement-tests-documentation.md)
 - [Meditation Session Tests Documentation](../testing/documentation/meditation-session-tests.md)
