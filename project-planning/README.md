@@ -56,12 +56,20 @@ The documentation is organized into the following categories:
 ### Sprints
 - [Sprint One](sprints/sprint-one.md) - Sprint One planning
 - [Sprint One Review](sprints/sprint-one-review.md) - Sprint One review
-- [Sprint Two](sprints/sprint-two.md) - Sprint Two planning (Current)
+- [Sprint Two](sprints/sprint-two.md) - Sprint Two planning
+- [Sprint Two Review](sprints/sprint-two-review.md) - Sprint Two review
+- [Sprint Three](sprints/sprint-three.md) - Sprint Three planning (Current)
 
 #### Sprint Two Documentation
 - [Documentation Plan](sprints/documentation/documentation-plan.md) - Documentation plan for Sprint Two
 - [Test Implementation Plan](sprints/documentation/test-implementation-plan.md) - Test implementation plan
 - [Directory Structure Plan](sprints/documentation/directory-structure-plan.md) - Directory structure plan
+
+#### Sprint Three Documentation
+- [Achievement System Implementation Plan](sprints/documentation/achievement-system-plan.md) - Achievement system implementation
+- [Stress Management Integration Plan](sprints/documentation/stress-management-plan.md) - Stress management integration
+- [Frontend Development Plan](sprints/documentation/frontend-development-plan.md) - Frontend development
+- [Feature Integration Strategy](sprints/documentation/feature-integration-strategy.md) - Feature integration strategy
 
 ## Documentation Updates
 
