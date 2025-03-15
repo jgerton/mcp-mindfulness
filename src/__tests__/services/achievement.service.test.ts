@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 import { AchievementService } from '../../services/achievement.service';
-import { Achievement } from '../../models/achievement.model';
+import { Achievement, IAchievementDocument } from '../../models/achievement.model';
 import { MeditationSession } from '../../models/meditation-session.model';
 import { WellnessMoodState } from '../../models/base-wellness-session.model';
 import { clearTestCollection, getTestObjectId } from '../helpers/db';
 import { UserPoints } from '../../models/user-points.model';
+import { findDocumentById, createTestDocument } from '../utils/test-utils';
 
 describe('AchievementService', () => {
   beforeEach(async () => {
@@ -19,10 +20,10 @@ describe('AchievementService', () => {
       const userId = getTestObjectId().toString();
       await AchievementService.initializeAchievements(userId);
 
-      const achievements = await Achievement.find({ userId });
+      const achievements = await Achievement.find({ userId }) as IAchievementDocument[];
       expect(achievements.length).toBeGreaterThan(0);
-      expect(achievements[0]).toHaveProperty('progress', 0);
-      expect(achievements[0]).toHaveProperty('completed', false);
+      expect(achievements[0].progress).toBe(0);
+      expect(achievements[0].completed).toBe(false);
     });
 
     it('should not duplicate achievements on re-initialization', async () => {
@@ -30,7 +31,7 @@ describe('AchievementService', () => {
       await AchievementService.initializeAchievements(userId);
       await AchievementService.initializeAchievements(userId);
 
-      const achievements = await Achievement.find({ userId });
+      const achievements = await Achievement.find({ userId }) as IAchievementDocument[];
       const uniqueTypes = new Set(achievements.map(a => a.type));
       expect(achievements.length).toBe(uniqueTypes.size);
     });

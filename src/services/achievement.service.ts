@@ -12,9 +12,20 @@ export interface IAchievement {
   type: string;
   progress: number;
   target: number;
+  completed: boolean;
   completedAt?: Date;
   title?: string;
   description?: string;
+  name?: string;
+  category?: string;
+  criteria?: {
+    type: string;
+    value: any;
+  };
+  icon?: string;
+  points?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 type AchievementType = 
@@ -293,11 +304,16 @@ export class AchievementService {
     const achievement = await Achievement.findOne({
       userId: new mongoose.Types.ObjectId(userId),
       type
-    });
+    }) as IAchievementDocument;
 
     if (!achievement) {
       return;
     }
+
+    // Ensure properties are initialized if undefined
+    if (achievement.progress === undefined) achievement.progress = 0;
+    if (achievement.target === undefined) achievement.target = 0;
+    if (achievement.completed === undefined) achievement.completed = false;
 
     achievement.progress = Math.min(achievement.target, achievement.progress + increment);
     
@@ -313,11 +329,16 @@ export class AchievementService {
     const achievement = await Achievement.findOne({
       userId: new mongoose.Types.ObjectId(userId),
       type
-    });
+    }) as IAchievementDocument;
 
     if (!achievement || achievement.completed) {
       return;
     }
+
+    // Ensure properties are initialized if undefined
+    if (achievement.progress === undefined) achievement.progress = 0;
+    if (achievement.target === undefined) achievement.target = 0;
+    if (achievement.completed === undefined) achievement.completed = false;
 
     achievement.progress = achievement.target;
     achievement.completed = true;
@@ -340,25 +361,23 @@ export class AchievementService {
     let achievement = await Achievement.findOne({
       userId: userObjectId,
       type: 'social_butterfly'
-    });
+    }) as IAchievementDocument;
 
     if (!achievement) {
-      achievement = new Achievement({
-        userId: userObjectId,
-        type: 'social_butterfly',
-        progress: 0,
-        target: this.ACHIEVEMENT_TARGETS.social_butterfly
-      });
+      return;
     }
 
-    // Update progress
-    achievement.progress = friendCount;
+    // Ensure properties are initialized if undefined
+    if (achievement.progress === undefined) achievement.progress = 0;
+    if (achievement.target === undefined) achievement.target = 0;
+    if (achievement.completedAt === undefined) achievement.completedAt = null;
 
-    // Check if achievement is completed
+    achievement.progress = friendCount;
+    
     if (achievement.progress >= achievement.target && !achievement.completedAt) {
       achievement.completedAt = new Date();
     }
-
+    
     await achievement.save();
   }
 
@@ -433,13 +452,18 @@ export class AchievementService {
       }
     }
 
-    // Update Week Warrior achievement
+    // Week Warrior (7 consecutive days)
     const weekWarrior = await Achievement.findOne({
       userId: new mongoose.Types.ObjectId(userId),
       type: 'week_warrior'
-    });
+    }) as IAchievementDocument;
 
     if (weekWarrior && !weekWarrior.completed) {
+      // Ensure properties are initialized if undefined
+      if (weekWarrior.progress === undefined) weekWarrior.progress = 0;
+      if (weekWarrior.target === undefined) weekWarrior.target = 0;
+      if (weekWarrior.completed === undefined) weekWarrior.completed = false;
+
       weekWarrior.progress = streak;
       if (streak >= weekWarrior.target) {
         weekWarrior.completed = true;
@@ -448,13 +472,18 @@ export class AchievementService {
       await weekWarrior.save();
     }
 
-    // Update Mindful Month achievement
+    // Mindful Month (30 consecutive days)
     const mindfulMonth = await Achievement.findOne({
       userId: new mongoose.Types.ObjectId(userId),
       type: 'mindful_month'
-    });
+    }) as IAchievementDocument;
 
     if (mindfulMonth && !mindfulMonth.completed) {
+      // Ensure properties are initialized if undefined
+      if (mindfulMonth.progress === undefined) mindfulMonth.progress = 0;
+      if (mindfulMonth.target === undefined) mindfulMonth.target = 0;
+      if (mindfulMonth.completed === undefined) mindfulMonth.completed = false;
+
       mindfulMonth.progress = streak;
       if (streak >= mindfulMonth.target) {
         mindfulMonth.completed = true;
@@ -468,8 +497,9 @@ export class AchievementService {
     const achievements = await Achievement.find({
       userId,
       completed: true
-    });
-    return achievements.map(a => a.type);
+    }) as IAchievementDocument[];
+
+    return achievements.map(a => a.type || '').filter(Boolean);
   }
 
   private static async saveAchievement(

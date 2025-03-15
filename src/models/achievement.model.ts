@@ -13,8 +13,27 @@ export interface IAchievement extends Document {
   };
   icon: string;
   points: number;
+  // Add missing properties used in achievement service
+  progress?: number;
+  target?: number;
+  completed?: boolean;
+  completedAt?: Date;
+  type?: string;
+  userId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Create an extended interface for Mongoose documents with achievement properties
+ */
+export interface IAchievementDocument extends mongoose.Document, IAchievement {
+  progress: number;
+  target: number;
+  completed: boolean;
+  completedAt?: Date;
+  type: string;
+  userId: mongoose.Types.ObjectId;
 }
 
 /**
