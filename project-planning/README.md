@@ -59,6 +59,9 @@ The documentation is organized into the following categories:
 - [Sprint Two](sprints/sprint-two.md) - Sprint Two planning
 - [Sprint Two Review](sprints/sprint-two-review.md) - Sprint Two review
 - [Sprint Three](sprints/sprint-three.md) - Sprint Three planning (Current)
+- [Sprint Four](sprints/sprint-four.md) - Sprint Four planning (Upcoming)
+- [Sprint Five](sprints/sprint-five.md) - Sprint Five planning (Upcoming)
+- [Sprint Six](sprints/sprint-six.md) - Sprint Six planning (Upcoming)
 
 #### Sprint Two Documentation
 - [Documentation Plan](sprints/documentation/documentation-plan.md) - Documentation plan for Sprint Two
@@ -68,8 +71,11 @@ The documentation is organized into the following categories:
 #### Sprint Three Documentation
 - [Achievement System Implementation Plan](sprints/documentation/achievement-system-plan.md) - Achievement system implementation
 - [Stress Management Integration Plan](sprints/documentation/stress-management-plan.md) - Stress management integration
-- [Frontend Development Plan](sprints/documentation/frontend-development-plan.md) - Frontend development
 - [Feature Integration Strategy](sprints/documentation/feature-integration-strategy.md) - Feature integration strategy
+
+#### Frontend Development Documentation
+- [Frontend Development Plan](sprints/documentation/frontend-development-plan.md) - Frontend development across Sprints Four-Six
+- [UI Design System](sprints/documentation/ui-design-system.md) - UI design system for Sprint Four
 
 ## Documentation Updates
 
