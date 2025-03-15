@@ -3,6 +3,16 @@
 ## Overview
 This document outlines the recommended workflow for managing tasks during sprints. Following these guidelines will help maintain consistency, improve tracking, and ensure all team members are aligned on progress and next steps.
 
+## Implementation Structure
+All implementation code should be placed in the appropriate directories under `/src`:
+- Models: `/src/models/`
+- Controllers: `/src/controllers/`
+- Routes: `/src/routes/`
+- Services: `/src/services/`
+- Middleware: `/src/middleware/`
+
+Documentation and planning artifacts should remain in the `/project-planning` directory.
+
 ## Sprint Task Workflow
 
 ### 1. Task Selection Process
@@ -12,9 +22,10 @@ This document outlines the recommended workflow for managing tasks during sprint
    - Dependencies (tasks that block other tasks should be completed first)
    - Task assignments (if specified)
    - Team member expertise and availability
+3. **Identify Implementation Path**: Before starting, confirm the correct file path where the implementation should be placed (e.g., `/src/models/` for model implementations).
 
 ### 2. Task Implementation Process
-1. **Implement the Task**: Complete the necessary code, documentation, or other deliverables.
+1. **Implement the Task**: Complete the necessary code in the appropriate `/src` directory, or documentation in the `/project-planning` directory.
 2. **Commit Changes**: Use descriptive commit messages that reference the task being completed.
 3. **Update Sprint Document**: Mark the task as completed in the sprint document.
 4. **Push Changes**: Push all changes, including the updated sprint document.
@@ -49,6 +60,17 @@ Use the following indicators in sprint documents:
 - `⬜` - Task not started or in progress (in priority lists)
 - `✅` - Task completed (in priority lists)
 
+## File Path Conventions
+
+When documenting tasks in sprint documents, always include the target file path:
+
+```
+- [ ] Implement User model (`/src/models/user.model.ts`)
+- [ ] Update testing standards (`/project-planning/standards/testing-standards.md`)
+```
+
+This ensures clarity about where implementation code should be placed versus documentation.
+
 ## Sprint Review Process
 
 At the end of each sprint:
@@ -82,13 +104,14 @@ When completing tasks that affect documentation:
 # Start of day
 1. Review sprint-three.md to check progress and identify next tasks
 2. Select highest priority incomplete task
-3. Implement the task
-4. Commit code changes
-5. Update sprint-three.md to mark task as completed
-6. Commit sprint document update
-7. Push changes
-8. Review sprint-three.md again to select next task
-9. Repeat
+3. Identify the correct implementation path (e.g., /src/models/ for models)
+4. Implement the task in the correct location
+5. Commit code changes
+6. Update sprint-three.md to mark task as completed
+7. Commit sprint document update
+8. Push changes
+9. Review sprint-three.md again to select next task
+10. Repeat
 ```
 
 By following these guidelines, we can maintain a consistent workflow, improve visibility into sprint progress, and ensure that all team members are aligned on priorities and next steps. 
