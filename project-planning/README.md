@@ -52,6 +52,7 @@ The documentation is organized into the following categories:
 - [Implementation Status](workflows/implementation-status.md) - Current implementation status
 - [Learning Analytics Plan](workflows/learning-analytics-plan.md) - Analytics implementation
 - [Learning Path Management Plan](workflows/learning-path-management-plan.md) - Learning path features
+- [Sprint Planning Guidelines](sprints/documentation/sprint-planning-guidelines.md) - Guidelines for planning sprints with testing principles
 
 ### Sprints
 - [Sprint One](sprints/sprint-one.md) - Sprint One planning
