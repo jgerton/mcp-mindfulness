@@ -64,7 +64,7 @@ describe('StressAssessment Model', () => {
     it('should fail validation when required fields are missing', async () => {
       const stressAssessment = new StressAssessment({});
       
-      let error;
+      let error: any;
       try {
         await stressAssessment.save();
       } catch (err) {
@@ -82,7 +82,7 @@ describe('StressAssessment Model', () => {
         stressLevel: 0
       });
       
-      let error;
+      let error: any;
       try {
         await stressAssessment.save();
       } catch (err) {
@@ -100,7 +100,7 @@ describe('StressAssessment Model', () => {
         stressLevel: 11
       });
       
-      let error;
+      let error: any;
       try {
         await stressAssessment.save();
       } catch (err) {
@@ -118,7 +118,7 @@ describe('StressAssessment Model', () => {
         physicalSymptoms: Array(11).fill('Symptom')
       });
       
-      let error;
+      let error: any;
       try {
         await stressAssessment.save();
       } catch (err) {
@@ -136,7 +136,7 @@ describe('StressAssessment Model', () => {
         emotionalSymptoms: Array(11).fill('Symptom')
       });
       
-      let error;
+      let error: any;
       try {
         await stressAssessment.save();
       } catch (err) {
@@ -154,7 +154,7 @@ describe('StressAssessment Model', () => {
         triggers: Array(6).fill('Trigger')
       });
       
-      let error;
+      let error: any;
       try {
         await stressAssessment.save();
       } catch (err) {
@@ -172,7 +172,7 @@ describe('StressAssessment Model', () => {
         notes: 'A'.repeat(1001)
       });
       
-      let error;
+      let error: any;
       try {
         await stressAssessment.save();
       } catch (err) {

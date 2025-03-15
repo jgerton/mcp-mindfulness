@@ -53,7 +53,7 @@ describe('Achievement Model', () => {
     it('should fail validation when required fields are missing', async () => {
       const achievement = new Achievement({});
       
-      let error;
+      let error: any;
       try {
         await achievement.save();
       } catch (err) {
@@ -76,7 +76,7 @@ describe('Achievement Model', () => {
         category: 'invalid-category'
       });
       
-      let error;
+      let error: any;
       try {
         await achievement.save();
       } catch (err) {
@@ -94,7 +94,7 @@ describe('Achievement Model', () => {
         points: -10
       });
       
-      let error;
+      let error: any;
       try {
         await achievement.save();
       } catch (err) {
@@ -112,7 +112,7 @@ describe('Achievement Model', () => {
         name: 'A'.repeat(101)
       });
       
-      let error;
+      let error: any;
       try {
         await achievement.save();
       } catch (err) {
@@ -130,7 +130,7 @@ describe('Achievement Model', () => {
         description: 'A'.repeat(501)
       });
       
-      let error;
+      let error: any;
       try {
         await achievement.save();
       } catch (err) {
@@ -200,7 +200,7 @@ describe('UserAchievement Model', () => {
     it('should fail validation when required fields are missing', async () => {
       const userAchievement = new UserAchievement({});
       
-      let error;
+      let error: any;
       try {
         await userAchievement.save();
       } catch (err) {
@@ -219,7 +219,7 @@ describe('UserAchievement Model', () => {
         progress: -10
       });
       
-      let error;
+      let error: any;
       try {
         await userAchievement.save();
       } catch (err) {
@@ -237,7 +237,7 @@ describe('UserAchievement Model', () => {
         progress: 110
       });
       
-      let error;
+      let error: any;
       try {
         await userAchievement.save();
       } catch (err) {
@@ -256,7 +256,7 @@ describe('UserAchievement Model', () => {
       // Try to create another with the same userId and achievementId
       const duplicateUserAchievement = new UserAchievement(validUserAchievementData());
       
-      let error;
+      let error: any;
       try {
         await duplicateUserAchievement.save();
       } catch (err) {

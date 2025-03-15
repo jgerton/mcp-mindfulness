@@ -74,7 +74,7 @@ describe('MeditationSession Model', () => {
     it('should fail validation when required fields are missing', async () => {
       const meditationSession = new MeditationSession({});
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -95,7 +95,7 @@ describe('MeditationSession Model', () => {
         duration: -10
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -113,7 +113,7 @@ describe('MeditationSession Model', () => {
         type: 'invalid-type'
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -131,7 +131,7 @@ describe('MeditationSession Model', () => {
         guidedMeditationId: undefined
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -166,7 +166,7 @@ describe('MeditationSession Model', () => {
         endTime
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -184,7 +184,7 @@ describe('MeditationSession Model', () => {
         title: 'A'.repeat(101)
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -202,7 +202,7 @@ describe('MeditationSession Model', () => {
         description: 'A'.repeat(501)
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -220,7 +220,7 @@ describe('MeditationSession Model', () => {
         notes: 'A'.repeat(1001)
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
@@ -236,12 +236,12 @@ describe('MeditationSession Model', () => {
       const meditationSession = new MeditationSession({
         ...validMeditationSessionData,
         mood: {
-          before: 'invalid-mood',
+          before: 'invalid-mood' as any,
           after: 'positive'
         }
       });
       
-      let error;
+      let error: any;
       try {
         await meditationSession.save();
       } catch (err) {
