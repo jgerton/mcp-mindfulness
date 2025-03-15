@@ -8,8 +8,8 @@
 - Incorporate testing best practices from TODO-TESTING.md
 
 ## Sprint Duration
-- Start Date: April 1, 2025
-- End Date: April 15, 2025
+- Start Date: June 12, 2023
+- End Date: June 26, 2023
 - Duration: 2 weeks
 
 ## Sprint Backlog
