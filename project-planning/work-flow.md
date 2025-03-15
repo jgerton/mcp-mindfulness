@@ -71,6 +71,33 @@ This plan is crucial because it helps us:
 3. Add clear comments explaining why tests are skipped
 4. Create tracking issues for future implementation
 5. Include test implementation in feature roadmap
+6. Add test status to the [Implementation Status](implementation-status.md) document
+7. Schedule regular reviews of skipped tests using the [Test Review Schedule](testing/test-review-schedule.md)
+
+### Test Maintenance
+1. **Regular Test Review**
+   - Review all tests quarterly
+   - Check for outdated testing patterns
+   - Update tests to follow current best practices
+   - Reference [Testing Best Practices Examples](testing/examples/) for guidance
+
+2. **Test Documentation**
+   - Maintain up-to-date documentation for all test suites
+   - Document test coverage and gaps
+   - Keep test implementation roadmap current
+   - Update test documentation when tests are modified
+
+3. **Unskipping Tests**
+   - Before unskipping a test, verify the feature is fully implemented
+   - Update test to match current implementation if needed
+   - Run the test in isolation to verify it passes
+   - Update the tracking issue and implementation status
+
+4. **Test Refactoring**
+   - Refactor tests when underlying implementation changes
+   - Maintain consistent testing patterns across the codebase
+   - Extract common testing utilities for reuse
+   - Follow the examples in [Testing Best Practices Examples](testing/examples/)
 
 ### Bug Fixes
 1. Create bug report

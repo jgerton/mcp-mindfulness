@@ -172,10 +172,21 @@
 - 🧪 Meditation Session Tests
   - **Status**: 12 skipped tests
   - **Reason**: Features in development
-  - **Documentation**: To be created
+  - **Documentation**: [Meditation Session Tests Documentation](testing/meditation-session-tests.md)
   - **Implementation Plan**: [Test Implementation Roadmap](testing/test-implementation-roadmap.md)
   - **Review Schedule**: [Test Review Schedule](testing/test-review-schedule.md)
   - **Target Implementation**: Sprints 7+ (Q4 2023)
+
+- 🧪 Testing Best Practices Examples
+  - **Status**: Completed
+  - **Example Files**:
+    - [Example Controller with Error Handling](testing/examples/example-controller-with-error-handling.ts)
+    - [Example Test with Authentication](testing/examples/example-test-with-authentication.test.ts)
+    - [Example MongoDB Test](testing/examples/example-mongodb-test.ts)
+    - [Example API Error Handling](testing/examples/example-api-error-handling.ts)
+    - [Example Middleware Test](testing/examples/example-middleware-test.test.ts)
+  - **Purpose**: These example files demonstrate best practices for testing and error handling based on lessons learned from Sprint One and Two.
+  - **Usage**: Developers should reference these examples when implementing new features or tests.
 
 ### Controllers & Services
 - [ ] Create base session controller for shared logic

@@ -201,12 +201,78 @@ All API error responses must follow a consistent format:
 - 403: Forbidden (authorization errors)
 - 404: Not Found (resource not found)
 - 409: Conflict (resource already exists, state conflicts)
+- 422: Unprocessable Entity (validation passed but request cannot be processed)
 - 500: Internal Server Error (unexpected errors)
 
 ### Validation Requirements
 - All user inputs must be validated
 - MongoDB ObjectIds must be validated before use
 - Validation errors should return 400 Bad Request with specific error messages
+
+### Error Handling Best Practices
+- Use a centralized error handling middleware
+- Create custom error classes for different error types
+- Use async error handlers to avoid try/catch blocks in controllers
+- Log errors with appropriate context (user, request path, etc.)
+- In production, don't expose internal error details to clients
+
+### MongoDB Error Handling
+- Handle MongoDB-specific errors consistently:
+  - Duplicate key errors (code 11000) should return 409 Conflict
+  - Validation errors should return 400 Bad Request
+  - Cast errors (invalid ObjectId) should return 400 Bad Request
+
+### Example Error Handling Implementation
+```typescript
+// Custom error class
+class APIError extends Error {
+  statusCode: number;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode: number, isOperational = true) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = isOperational;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+// Error handler middleware
+const errorHandler = (err, req, res, next) => {
+  let error = { ...err };
+  error.message = err.message;
+  
+  // Log error
+  logger.error({
+    message: error.message,
+    stack: err.stack,
+    path: req.path,
+    user: req.user?._id || 'unauthenticated'
+  });
+  
+  // Handle specific error types
+  if (err instanceof mongoose.Error.ValidationError) {
+    const message = Object.values(err.errors)
+      .map(e => e.message)
+      .join(', ');
+    error = new APIError(`Validation Error: ${message}`, 400);
+  }
+  
+  if (err instanceof mongoose.Error.CastError) {
+    error = new APIError(`Invalid ${err.path}: ${err.value}`, 400);
+  }
+  
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue)[0];
+    error = new APIError(`Duplicate ${field}`, 409);
+  }
+  
+  // Send response
+  res.status(error.statusCode || 500).json({
+    error: error.message || 'Internal server error'
+  });
+};
+```
 
 ---
 
