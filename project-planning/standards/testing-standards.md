@@ -208,170 +208,205 @@ it('should handle errors', async () => {
 
 ## API Error Response Standards
 
-Based on lessons learned from Sprint One, we've established the following standards for API error responses:
+Based on lessons learned from our test fixes, we've established the following standards for API error responses:
 
 ### Error Response Format
-- All API error responses should follow a consistent format with an `error` property containing the error message
+- All API error responses must use an `error` property for the error message
 - Never mix `message` and `error` properties in responses
-- Example:
-```typescript
-// Correct format
-return res.status(404).json({ error: 'User not found' });
-
-// Incorrect format - don't use this
-return res.status(404).json({ message: 'User not found' });
+- Example of correct format:
+```json
+{
+  "error": "Resource not found"
+}
 ```
 
-### Error Status Code Standardization
-- Use appropriate HTTP status codes for different error scenarios:
-  - `400` Bad Request: For validation errors or malformed requests
-  - `401` Unauthorized: For authentication errors (missing or invalid token)
-  - `403` Forbidden: For authorization errors (insufficient permissions)
-  - `404` Not Found: When requested resource doesn't exist
-  - `409` Conflict: When request conflicts with current state
-  - `500` Internal Server Error: For unexpected server errors
+### HTTP Status Codes
+- Use consistent HTTP status codes across all endpoints:
+  - 200: Successful operation
+  - 201: Resource created successfully
+  - 400: Bad request (validation errors, invalid input)
+  - 401: Unauthorized (missing or invalid authentication)
+  - 403: Forbidden (authenticated but not authorized)
+  - 404: Not found (resource doesn't exist)
+  - 409: Conflict (e.g., duplicate entry)
+  - 500: Server error
 
-### Error Testing
-- Test both the error message and status code in error scenarios
-- Verify that the response contains the `error` property
-- Example:
+### Error Handling Implementation
+- Always use try/catch blocks in async controller methods
+- Validate input data before database operations
+- Check for resource existence before operations
+- Verify resource ownership for protected operations
+- Example implementation:
 ```typescript
-it('should return 404 when user not found', async () => {
-  const response = await request(app)
-    .get('/api/users/nonexistentid')
-    .set('Authorization', `Bearer ${token}`);
+try {
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ error: "Invalid ID format" });
+  }
   
-  expect(response.status).toBe(404);
-  expect(response.body).toHaveProperty('error');
-  expect(response.body.error).toBe('User not found');
-});
+  // Check resource existence
+  const resource = await Resource.findById(req.params.id);
+  if (!resource) {
+    return res.status(404).json({ error: "Resource not found" });
+  }
+  
+  // Verify ownership
+  if (resource.userId.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ error: "Not authorized to access this resource" });
+  }
+  
+  // Proceed with operation
+  // ...
+} catch (error) {
+  console.error("Operation failed:", error);
+  return res.status(500).json({ error: "Server error" });
+}
 ```
 
 ## Authentication & Authorization Testing
 
 ### Authentication Token Structure
-- All test tokens should include both `_id` and `username` properties to match production requirements
+- All test tokens must include both `_id` and `username` properties
 - Use consistent token structure across all tests
-- Example:
+- Example of correct token structure:
 ```typescript
 const token = jwt.sign(
-  { _id: userId, username: 'testuser' },
-  process.env.JWT_SECRET
+  { _id: user._id.toString(), username: user.username },
+  process.env.JWT_SECRET,
+  { expiresIn: '1h' }
 );
 ```
 
-### Authentication Testing
-- Test both successful authentication and failure cases
-- Verify token validation and expiration
-- Test missing, invalid, and expired tokens
-- Example:
+### Authentication Test Cases
+- Test successful authentication with valid token
+- Test rejection with missing token
+- Test rejection with invalid token format
+- Test rejection with expired token
+- Example test structure:
 ```typescript
-it('should reject request with invalid token', async () => {
-  const response = await request(app)
-    .get('/api/protected-route')
-    .set('Authorization', 'Bearer invalid-token');
+describe('Authentication', () => {
+  it('should allow access with valid token', async () => {
+    // Test implementation
+  });
   
-  expect(response.status).toBe(401);
-  expect(response.body).toHaveProperty('error');
+  it('should reject access with missing token', async () => {
+    // Test implementation
+  });
+  
+  it('should reject access with invalid token', async () => {
+    // Test implementation
+  });
+  
+  it('should reject access with expired token', async () => {
+    // Test implementation
+  });
 });
 ```
 
-### Authorization Checks
-- All resource access should include ownership verification tests
-- Test that users cannot access resources they don't own
-- Example:
+### Authorization Test Cases
+- Test that owner can access their resources
+- Test that owner can modify their resources
+- Test that non-owner cannot access protected resources
+- Test that non-owner cannot modify protected resources
+- Example test structure:
 ```typescript
-it('should prevent access to another user\'s data', async () => {
-  // Create two users
-  const user1 = await createTestUser();
-  const user2 = await createTestUser();
+describe('Authorization', () => {
+  it('should allow owner to access their resource', async () => {
+    // Test implementation
+  });
   
-  // Create resource owned by user1
-  const resource = await createTestResource(user1.userId);
+  it('should allow owner to modify their resource', async () => {
+    // Test implementation
+  });
   
-  // Attempt to access with user2's token
-  const response = await request(app)
-    .get(`/api/resources/${resource._id}`)
-    .set('Authorization', `Bearer ${user2.token}`);
+  it('should prevent non-owner from accessing resource', async () => {
+    // Test implementation
+  });
   
-  expect(response.status).toBe(403);
-  expect(response.body).toHaveProperty('error');
+  it('should prevent non-owner from modifying resource', async () => {
+    // Test implementation
+  });
 });
 ```
 
 ## MongoDB Testing Best Practices
 
-### Connection Management
-- Enhance connection management using the in-memory MongoDB server
-- Properly handle connection errors and cleanup
-- Use consistent connection patterns across tests
-- Example:
+### ObjectId Validation
+- Always validate ObjectId format before database operations
+- Include tests for invalid ObjectId format
+- Example validation:
 ```typescript
-// In setup.ts
-beforeAll(async () => {
-  await dbHelper.connect();
-});
+if (!mongoose.Types.ObjectId.isValid(id)) {
+  return res.status(400).json({ error: "Invalid ID format" });
+}
+```
 
-afterEach(async () => {
-  await dbHelper.clearDatabase();
+### Connection Management
+- Use MongoDB Memory Server for tests
+- Set up connection before all tests
+- Close connection after all tests
+- Clear collections between tests
+- Example setup:
+```typescript
+beforeAll(async () => {
+  await mongoose.connect(mongoServer.getUri());
 });
 
 afterAll(async () => {
-  await dbHelper.closeDatabase();
+  await mongoose.disconnect();
+  await mongoServer.stop();
+});
+
+beforeEach(async () => {
+  await User.deleteMany({});
+  await Resource.deleteMany({});
 });
 ```
 
-### ObjectId Validation
-- Validate MongoDB ObjectIds before using them in queries
-- Use proper ObjectId comparison (string comparison may fail)
-- Handle invalid ObjectId format gracefully
-- Example:
+### Database Error Handling
+- Test database operation failures
+- Mock database errors when necessary
+- Include error handling in all database operations
+- Example test:
 ```typescript
-// Validation helper
-const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
-};
-
-// In controller
-if (!isValidObjectId(req.params.id)) {
-  return res.status(400).json({ error: 'Invalid ID format' });
-}
-
-// In tests
-it('should return 400 for invalid ObjectId format', async () => {
+it('should handle database errors gracefully', async () => {
+  jest.spyOn(Resource, 'findById').mockImplementationOnce(() => {
+    throw new Error('Database error');
+  });
+  
   const response = await request(app)
-    .get('/api/resources/invalid-id')
+    .get('/api/resources/123')
     .set('Authorization', `Bearer ${token}`);
   
-  expect(response.status).toBe(400);
-  expect(response.body.error).toBe('Invalid ID format');
+  expect(response.status).toBe(500);
+  expect(response.body).toHaveProperty('error');
 });
 ```
 
 ## Test Lifecycle Management
 
 ### Skipped Tests
-- Document all skipped tests with standardized comments explaining:
-  - Why the test is skipped
-  - What functionality it's testing
-  - What needs to be implemented before it can be unskipped
+- All skipped tests must have clear documentation explaining why they're skipped
+- Use the standardized test documentation template
+- Include information about what needs to be implemented before unskipping
 - Example:
 ```typescript
-// SKIPPED: Feature not yet implemented
-// Description: Tests the achievement awarding functionality
-// Requirements: Achievement service needs to implement checkAndAwardAchievements
-// Related Issue: #123 - Implement achievement system
-// Target Date: End of Sprint Three
-it.skip('should award achievement when meditation session is completed', async () => {
+// SKIPPED: This test is for the achievement system which is planned for Sprint Three
+it.skip('should award achievement for completing 10 sessions', async () => {
   // Test implementation
 });
 ```
 
 ### Test Review Process
-- Conduct quarterly reviews of all skipped tests
-- Document decisions to keep tests skipped or implement them
-- Update test documentation with current status
-- Create tracking issues for tests that should be unskipped in upcoming sprints
+- Review skipped tests at the end of each sprint
+- Create tracking issues for tests that remain skipped
+- Document the reason for continued skipping
+- Schedule regular reviews of skipped tests
+
+### Test Implementation Roadmap
+- Prioritize test implementation based on feature roadmap
+- Document dependencies between tests and features
+- Update test status in implementation status document
 
 ## Best Practices
 
@@ -483,7 +518,6 @@ it('should reject invalid token', async () => {
   
   expect(response.status).toBe(401);
   expect(response.body).toHaveProperty('error');
-  expect(response.body.error).toBe('Invalid token');
 });
 ```
 
@@ -510,7 +544,6 @@ it('should prevent access to another user\'s resource', async () => {
   
   expect(response.status).toBe(403);
   expect(response.body).toHaveProperty('error');
-  expect(response.body.error).toBe('Access denied');
 });
 ```
 
