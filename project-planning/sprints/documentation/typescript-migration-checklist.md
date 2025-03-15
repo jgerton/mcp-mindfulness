@@ -6,39 +6,51 @@ This document tracks the progress of migrating JavaScript files to TypeScript in
 
 | Category | Total Files | Migrated | Remaining | Progress |
 |----------|-------------|----------|-----------|----------|
-| Core Utilities | TBD | 0 | TBD | 0% |
-| Models | TBD | 0 | TBD | 0% |
-| Services | TBD | 0 | TBD | 0% |
-| Controllers | TBD | 0 | TBD | 0% |
-| Routes | TBD | 0 | TBD | 0% |
-| Components | TBD | 0 | TBD | 0% |
-| Tests | TBD | 0 | TBD | 0% |
-| **Total** | **TBD** | **0** | **TBD** | **0%** |
+| Core Utilities | 11 | 0 | 11 | 0% |
+| Models | 16 | 0 | 16 | 0% |
+| Services | 14 | 0 | 14 | 0% |
+| Controllers | 12 | 0 | 12 | 0% |
+| Routes | 13 | 0 | 13 | 0% |
+| Components | 4 | 0 | 4 | 0% |
+| Tests | 27 | 0 | 27 | 0% |
+| Socket | 1 | 0 | 1 | 0% |
+| **Total** | **98** | **0** | **98** | **0%** |
 
 ## Files to Migrate
 
-### Core Utilities and Helpers
-- [ ] `src/utils/*.js` files
-- [ ] `src/validations/*.js` files
-- [ ] `src/middleware/*.js` files
+### Core Utilities and Helpers (11)
+- [ ] `src/utils/*.js` files (3)
+- [ ] `src/validations/*.js` files (3)
+- [ ] `src/middleware/*.js` files (5)
 
-### Models
-- [ ] `src/models/*.js` files
+### Models (16)
+- [ ] `src/models/*.js` files (16)
 
-### Services
-- [ ] `src/services/*.js` files
+### Services (14)
+- [ ] `src/services/*.js` files (14)
 
-### Controllers
-- [ ] `src/controllers/*.js` files
+### Controllers (12)
+- [ ] `src/controllers/*.js` files (12)
 
-### Routes
-- [ ] `src/routes/*.js` files
+### Routes (13)
+- [ ] `src/routes/*.js` files (13)
 
-### Components
-- [ ] `src/components/*.js` files
+### Components (4)
+- [ ] `src/components/*.js` files (3)
+- [ ] `src/components/__tests__/*.js` files (1)
 
-### Tests
-- [ ] `src/__tests__/*.js` files
+### Socket (1)
+- [ ] `src/socket/*.js` files (1)
+
+### Tests (27)
+- [ ] `src/__tests__/*.js` files (11)
+- [ ] `src/__tests__/api/*.js` files (2)
+- [ ] `src/__tests__/controllers/*.js` files (2)
+- [ ] `src/__tests__/factories/*.js` files (1)
+- [ ] `src/__tests__/helpers/*.js` files (4)
+- [ ] `src/__tests__/models/*.js` files (2)
+- [ ] `src/__tests__/services/*.js` files (4)
+- [ ] `src/__tests__/utils/*.js` files (1)
 
 ## Migration Log
 
@@ -59,6 +71,5 @@ This document tracks the progress of migrating JavaScript files to TypeScript in
 
 ## Next Steps
 
-1. Complete the file inventory to determine exact counts
-2. Begin migration of core utilities
-3. Update this checklist regularly with progress 
+1. Begin migration of core utilities
+2. Update this checklist regularly with progress 
