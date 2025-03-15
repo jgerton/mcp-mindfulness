@@ -20,6 +20,8 @@ export class MeditationSessionService {
     durationCompleted?: number;
     completed: boolean;
     moodBefore?: MoodType;
+    title?: string;
+    type?: string;
   }): Promise<{ sessionId: string; status: string }> {
     const activeSession = await this.getActiveSession(userId);
     if (activeSession) {
@@ -36,10 +38,12 @@ export class MeditationSessionService {
       startTime: new Date(),
       duration: data.duration,
       durationCompleted: data.durationCompleted || 0,
-      status: WellnessSessionStatus.Active,
       interruptions: 0,
       completed: data.completed,
-      moodBefore: this.convertMoodType(data.moodBefore)
+      moodBefore: this.convertMoodType(data.moodBefore),
+      title: data.title,
+      type: data.type,
+      status: WellnessSessionStatus.Active
     }) as unknown as IMeditationSession & { _id: mongoose.Types.ObjectId };
 
     // Initialize analytics

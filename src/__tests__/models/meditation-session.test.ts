@@ -131,7 +131,7 @@ describe('MeditationSession', () => {
       // Wait to simulate session duration
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      await session.markCompleted(WellnessSessionStatus.Completed);
+      await session.completeSession();
       await session.save();
 
       expect(session.completed).toBe(true);
@@ -146,7 +146,7 @@ describe('MeditationSession', () => {
       // Wait to simulate session duration
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      await session.markCompleted(WellnessSessionStatus.Completed);
+      await session.completeSession();
       await session.save();
 
       expect(session.endTime).toBeDefined();
@@ -157,7 +157,7 @@ describe('MeditationSession', () => {
     });
 
     it('should process achievements on completion', async () => {
-      const mockProcessAchievements = jest.spyOn(AchievementService.prototype, 'processSessionAchievements');
+      const mockProcessAchievements = jest.spyOn(AchievementService, 'processMeditationAchievements');
       
       const session = new MeditationSession({
         ...createBasicSession(),
@@ -165,14 +165,14 @@ describe('MeditationSession', () => {
       });
       await session.save();
 
-      await session.markCompleted(WellnessSessionStatus.Completed);
+      await session.completeSession();
       await session.processAchievements();
 
       expect(mockProcessAchievements).toHaveBeenCalled();
     });
 
     it('should not process achievements for incomplete sessions', async () => {
-      const mockProcessAchievements = jest.spyOn(AchievementService.prototype, 'processSessionAchievements');
+      const mockProcessAchievements = jest.spyOn(AchievementService, 'processMeditationAchievements');
       
       const session = new MeditationSession(createBasicSession());
       await session.save();
@@ -191,7 +191,7 @@ describe('MeditationSession', () => {
       });
       await session.save();
 
-      await session.complete(WellnessMoodState.Calm);
+      await session.completeSession();
 
       const achievementData = (AchievementService.processMeditationAchievements as jest.Mock).mock.calls[0][0];
       expect(achievementData.moodImprovement).toBe(2); // Anxious(2) to Calm(4) = 2 improvement
@@ -204,7 +204,7 @@ describe('MeditationSession', () => {
       });
       await session.save();
 
-      await session.complete(WellnessMoodState.Calm);
+      await session.completeSession();
 
       const achievementData = (AchievementService.processMeditationAchievements as jest.Mock).mock.calls[0][0];
       expect(achievementData.moodImprovement).toBe(0);
