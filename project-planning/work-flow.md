@@ -65,6 +65,13 @@ This plan is crucial because it helps us:
 6. Create pull request
 7. Merge to develop
 
+### Handling Skipped Tests
+1. Review skipped tests in the feature area
+2. Document skipped tests using the [Test Documentation Template](testing/test-documentation-template.md)
+3. Add clear comments explaining why tests are skipped
+4. Create tracking issues for future implementation
+5. Include test implementation in feature roadmap
+
 ### Bug Fixes
 1. Create bug report
 2. Reproduce issue
@@ -109,6 +116,10 @@ This plan is crucial because it helps us:
 1. Check code quality
 2. Verify functionality
 3. Review tests
+   - Ensure all tests pass
+   - Check test coverage
+   - Verify test consistency with standards
+   - Review documentation for skipped tests
 4. Check documentation
 5. Provide feedback
 
@@ -130,6 +141,201 @@ This plan is crucial because it helps us:
 - [Git Flow](https://nvie.com/posts/a-successful-git-branching-model/)
 - [Agile Development Guide](https://www.atlassian.com/agile)
 - [Code Review Best Practices](https://google.github.io/eng-practices/review/)
+
+## Test-Driven Development Workflow
+
+### Pre-Implementation Testing
+
+1. Write test specifications first
+2. Verify test imports and dependencies
+3. Create minimal implementation
+4. Run tests to confirm failures
+5. Implement functionality
+6. Run tests to confirm success
+
+### Test Validation Checklist
+
+Before committing code, ensure:
+
+1. All tests pass locally
+2. No TypeScript errors in tests or implementation
+3. Database connections are properly managed
+4. Test data is properly cleaned up
+5. No circular dependencies exist
+6. All imports resolve correctly
+
+### Common Test Failure Prevention
+
+```typescript
+// INCORRECT: Writing implementation before tests
+function calculatePoints(userId) {
+  // Complex implementation
+}
+
+// CORRECT: Test-driven approach
+// 1. Write test first
+test('should calculate points correctly', async () => {
+  const result = await calculatePoints('user123');
+  expect(result).toBe(100);
+});
+
+// 2. Implement minimal version to make test pass
+function calculatePoints(userId) {
+  return 100; // Minimal implementation
+}
+
+// 3. Refine implementation with more tests
+test('should calculate points based on activity', async () => {
+  // Setup test data
+  await Activity.create({ userId: 'user123', points: 50 });
+  await Activity.create({ userId: 'user123', points: 50 });
+  
+  const result = await calculatePoints('user123');
+  expect(result).toBe(100);
+});
+
+// 4. Implement full version
+async function calculatePoints(userId) {
+  const activities = await Activity.find({ userId });
+  return activities.reduce((sum, activity) => sum + activity.points, 0);
+}
+```
+
+### Pre-Commit Validation Script
+
+Add this script to package.json:
+
+```json
+{
+  "scripts": {
+    "validate": "npm run lint && npm run type-check && npm run test:ci",
+    "type-check": "tsc --noEmit",
+    "test:ci": "jest --ci --runInBand",
+    "pre-commit": "npm run validate"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run pre-commit"
+    }
+  }
+}
+```
+
+### Module Resolution Verification
+
+Before submitting a PR, run:
+
+```bash
+# Verify all imports resolve correctly
+npx tsc --noEmit
+
+# Check for circular dependencies
+npx madge --circular --extensions ts ./src
+```
+
+### Database Connection Management
+
+Ensure all tests use a shared database connection:
+
+```typescript
+// src/__tests__/setup.ts
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+
+let mongoServer: MongoMemoryServer;
+
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
+});
+
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer.stop();
+});
+
+beforeEach(async () => {
+  const collections = mongoose.connection.collections;
+  for (const key in collections) {
+    await collections[key].deleteMany({});
+  }
+});
+```
+
+### Test Data Isolation
+
+Ensure tests don't interfere with each other:
+
+```typescript
+// INCORRECT: Shared test data
+let testUser;
+
+beforeAll(async () => {
+  testUser = await User.create({ name: 'Test User' });
+});
+
+// CORRECT: Isolated test data
+beforeEach(async () => {
+  // Create fresh test data for each test
+  const testUser = await User.create({ name: 'Test User' });
+  
+  // Or use test factories
+  const testUser = createTestUser();
+  await User.create(testUser);
+});
+```
+
+### Test Maintenance
+
+Regularly maintain tests to ensure they remain valuable:
+
+```typescript
+/**
+ * Guidelines for test maintenance:
+ * 
+ * 1. Review skipped tests quarterly
+ * 2. Document all skipped tests with standardized comments
+ * 3. Create tracking issues for tests that need implementation
+ * 4. Update test documentation when implementation status changes
+ * 5. Remove obsolete tests that no longer provide value
+ */
+
+// Example of a well-documented skipped test
+/**
+ * @skipped
+ * @reason Feature not yet implemented
+ * 
+ * @description
+ * Tests that a user receives the appropriate achievement
+ * 
+ * @functionality
+ * Achievement System
+ * 
+ * @implementation-requirements
+ * - Achievement model must be implemented
+ * - Achievement service must be implemented
+ * 
+ * @target-completion
+ * Sprint 3
+ */
+it.skip('should award achievement when milestone is reached', async () => {
+  // Test implementation
+});
+```
+
+## Retrospective Process
+
+### Sprint Retrospective
+1. Review completed work
+2. Identify challenges
+3. Celebrate successes
+4. Plan improvements
+5. Review test maintenance
+   - Evaluate skipped tests for implementation
+   - Update test documentation
+   - Address flaky tests
+   - Review test coverage
 
 ---
 

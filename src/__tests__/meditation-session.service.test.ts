@@ -12,6 +12,7 @@ describe('MeditationSessionService', () => {
   let meditationSessionService: MeditationSessionService;
   let userId: mongoose.Types.ObjectId;
   let meditationId: mongoose.Types.ObjectId;
+  let testUser: any;
 
   beforeAll(async () => {
     if (!mongoose.connection.readyState) {
@@ -30,6 +31,11 @@ describe('MeditationSessionService', () => {
     meditationSessionService = new MeditationSessionService();
     userId = new mongoose.Types.ObjectId();
     meditationId = new mongoose.Types.ObjectId();
+    testUser = await User.create({
+      email: 'test@example.com',
+      password: 'password123',
+      username: 'testuser'
+    });
   });
 
   describe('startSession', () => {
@@ -138,5 +144,28 @@ describe('MeditationSessionService', () => {
       const analytics = await SessionAnalytics.findOne({ sessionId: new mongoose.Types.ObjectId(sessionId) });
       expect(analytics?.interruptions).toBe(1);
     });
+  });
+
+  it('should create a new meditation session', async () => {
+    const session = await meditationSessionService.createSession({
+      userId: testUser._id,
+      duration: 600,
+      type: 'guided'
+    });
+
+    expect(session).toBeDefined();
+    expect(session.userId).toEqual(testUser._id);
+    expect(session.duration).toBe(600);
+  });
+
+  it('should retrieve user sessions', async () => {
+    await meditationSessionService.createSession({
+      userId: testUser._id,
+      duration: 600,
+      type: 'guided'
+    });
+
+    const sessions = await meditationSessionService.getUserSessions(testUser._id);
+    expect(sessions.length).toBeGreaterThan(0);
   });
 }); 

@@ -4,6 +4,8 @@ import { IMeditationSession } from '../models/meditation-session.model';
 import { IGroupSession } from '../models/group-session.model';
 import { Friend } from '../models/friend.model';
 import { MeditationSession } from '../models/meditation-session.model';
+import { UserPoints } from '../models/user-points.model';
+import { LeaderboardService } from './leaderboard.service';
 
 export interface IAchievement {
   userId: mongoose.Types.ObjectId;
@@ -11,6 +13,8 @@ export interface IAchievement {
   progress: number;
   target: number;
   completedAt?: Date;
+  title?: string;
+  description?: string;
 }
 
 type AchievementType = 
@@ -26,6 +30,95 @@ type AchievementType =
   | 'beginner_meditator'
   | 'intermediate_meditator'
   | 'advanced_meditator';
+
+export interface AchievementData {
+  userId: mongoose.Types.ObjectId;
+  sessionId: mongoose.Types.ObjectId;
+  meditationId: mongoose.Types.ObjectId;
+  duration: number;
+  focusRating?: number;
+  interruptions: number;
+  streakMaintained?: boolean;
+  streakDay?: number;
+  moodImprovement?: number;
+}
+
+interface AchievementDefinition {
+  id: string;
+  name: string;
+  description: string;
+  type: AchievementType;
+  condition: (data: AchievementData) => boolean;
+  points: number;
+  title?: string;
+}
+
+// Define achievements
+const MEDITATION_ACHIEVEMENTS: AchievementDefinition[] = [
+  {
+    id: 'first_session',
+    name: 'First Steps',
+    description: 'Complete your first meditation session',
+    type: 'beginner_meditator',
+    condition: () => true, // Always awarded on first session
+    points: 50,
+    title: 'First Steps'
+  },
+  {
+    id: 'focused_session',
+    name: 'Deep Focus',
+    description: 'Complete a session with focus rating of 5',
+    type: 'mood_lifter',
+    condition: (data) => data.focusRating === 5,
+    points: 30,
+    title: 'Deep Focus'
+  },
+  {
+    id: 'long_session',
+    name: 'Extended Practice',
+    description: 'Complete a session of 20 minutes or more',
+    type: 'marathon_meditator',
+    condition: (data) => data.duration >= 1200, // 20 minutes in seconds
+    points: 40,
+    title: 'Extended Practice'
+  },
+  {
+    id: 'no_interruptions',
+    name: 'Undisturbed',
+    description: 'Complete a session without any interruptions',
+    type: 'mood_lifter',
+    condition: (data) => data.interruptions === 0,
+    points: 25,
+    title: 'Undisturbed'
+  },
+  {
+    id: 'streak_3',
+    name: 'Building Habit',
+    description: 'Maintain a 3-day meditation streak',
+    type: 'week_warrior',
+    condition: (data) => Boolean(data.streakMaintained && data.streakDay === 3),
+    points: 60,
+    title: 'Building Habit'
+  },
+  {
+    id: 'streak_7',
+    name: 'Weekly Warrior',
+    description: 'Maintain a 7-day meditation streak',
+    type: 'week_warrior',
+    condition: (data) => Boolean(data.streakMaintained && data.streakDay === 7),
+    points: 100,
+    title: 'Weekly Warrior'
+  },
+  {
+    id: 'mood_improvement',
+    name: 'Mood Lifter',
+    description: 'Experience significant mood improvement after meditation',
+    type: 'mood_lifter',
+    condition: (data) => (data.moodImprovement || 0) >= 3,
+    points: 35,
+    title: 'Mood Lifter'
+  }
+];
 
 export class AchievementService {
   private static readonly ACHIEVEMENT_TARGETS: Record<AchievementType | string, number> = {
@@ -169,23 +262,26 @@ export class AchievementService {
     await this.incrementAchievement(userId, 'community_pillar');
   }
 
-  public static async getUserPoints(userId: string): Promise<number> {
-    const achievements = await Achievement.find({ 
-      userId,
-      $or: [
-        { completed: true },
-        { progress: { $gt: 0 } }
-      ]
+  public static async getUserPoints(userId: string): Promise<{
+    total: number;
+    achievements: number;
+    streaks: number;
+    recent: number;
+  }> {
+    const userPoints = await UserPoints.findOne({
+      userId: new mongoose.Types.ObjectId(userId)
     });
-    
-    return achievements.reduce((total, achievement) => {
-      if (achievement.completed) {
-        return total + (achievement.points || 0);
-      }
-      // For incomplete achievements, award partial points based on progress
-      const progressRatio = achievement.progress / achievement.target;
-      return total + Math.floor((achievement.points || 0) * progressRatio);
-    }, 0);
+
+    if (!userPoints) {
+      return { total: 0, achievements: 0, streaks: 0, recent: 0 };
+    }
+
+    return {
+      total: userPoints.totalPoints,
+      achievements: userPoints.achievementPoints,
+      streaks: userPoints.streakPoints,
+      recent: userPoints.recentPoints
+    };
   }
 
   private static isMoodImproved(before: string, after: string): boolean {
@@ -366,5 +462,164 @@ export class AchievementService {
       }
       await mindfulMonth.save();
     }
+  }
+
+  private static async getUnlockedAchievements(userId: mongoose.Types.ObjectId): Promise<string[]> {
+    const achievements = await Achievement.find({
+      userId,
+      completed: true
+    });
+    return achievements.map(a => a.type);
+  }
+
+  private static async saveAchievement(
+    userId: mongoose.Types.ObjectId,
+    achievementId: string,
+    sessionId: mongoose.Types.ObjectId
+  ): Promise<void> {
+    const achievementDetails = this.ACHIEVEMENT_DETAILS[achievementId];
+    if (!achievementDetails) return;
+
+    await Achievement.findOneAndUpdate(
+      { userId, type: achievementId },
+      {
+        $setOnInsert: {
+          userId,
+          type: achievementId,
+          title: achievementDetails.title,
+          description: achievementDetails.description,
+          points: achievementDetails.points,
+          target: this.ACHIEVEMENT_TARGETS[achievementId] || 1
+        },
+        $set: {
+          completed: true,
+          completedAt: new Date(),
+          progress: this.ACHIEVEMENT_TARGETS[achievementId] || 1
+        }
+      },
+      { upsert: true, new: true }
+    );
+  }
+
+  private static async updateUserPoints(
+    userId: mongoose.Types.ObjectId,
+    points: number,
+    achievementType: string,
+    description: string
+  ): Promise<void> {
+    let userPoints = await UserPoints.findOne({ userId });
+    
+    if (!userPoints) {
+      userPoints = new UserPoints({ userId });
+    }
+
+    await userPoints.addPoints(points, 'achievement', description);
+    
+    // Invalidate leaderboard caches for this user
+    LeaderboardService.invalidateUserCache(userId);
+  }
+
+  static async processMeditationAchievements(data: AchievementData): Promise<void> {
+    // Get already unlocked achievements
+    const unlockedAchievements = await this.getUnlockedAchievements(data.userId);
+    
+    // Check for new achievements
+    const newAchievements = MEDITATION_ACHIEVEMENTS.filter(achievement => 
+      !unlockedAchievements.includes(achievement.id) && 
+      achievement.condition(data)
+    );
+
+    // Process new achievements
+    if (newAchievements.length > 0) {
+      // Save new achievements and update points
+      await Promise.all(
+        newAchievements.map(async achievement => {
+          await this.saveAchievement(data.userId, achievement.id, data.sessionId);
+          await this.updateUserPoints(
+            data.userId,
+            achievement.points,
+            achievement.id,
+            `Unlocked achievement: ${achievement.name}`
+          );
+        })
+      );
+
+      // Get user's new rank after points update
+      const { rank, totalUsers } = await LeaderboardService.getUserRank(data.userId);
+      
+      // If user is in top 3, we could trigger some special notification or reward
+      if (rank <= 3) {
+        // TODO: Implement special reward or notification
+        console.log(`User ${data.userId} reached top 3 rank!`);
+      }
+    }
+  }
+
+  static async processStreakPoints(userId: mongoose.Types.ObjectId, streakDays: number): Promise<void> {
+    const streakPoints = streakDays * 10; // 10 points per streak day
+    let userPoints = await UserPoints.findOne({ userId });
+    
+    if (!userPoints) {
+      userPoints = new UserPoints({ userId });
+    }
+
+    await userPoints.addPoints(
+      streakPoints,
+      'streak',
+      `${streakDays} day meditation streak`
+    );
+
+    // Invalidate leaderboard caches for this user
+    LeaderboardService.invalidateUserCache(userId);
+  }
+
+  static async getUserAchievements(userId: mongoose.Types.ObjectId): Promise<AchievementDefinition[]> {
+    const unlockedIds = await this.getUnlockedAchievements(userId);
+    return MEDITATION_ACHIEVEMENTS.filter(a => unlockedIds.includes(a.id));
+  }
+
+  static async getAvailableAchievements(): Promise<AchievementDefinition[]> {
+    return MEDITATION_ACHIEVEMENTS;
+  }
+
+  static async getUserStats(userId: mongoose.Types.ObjectId): Promise<{
+    points: {
+      total: number;
+      achievements: number;
+      streaks: number;
+      recent: number;
+    };
+    rank: {
+      current: number;
+      total: number;
+      weekly: number;
+      monthly: number;
+    };
+  }> {
+    const [points, allTimeRank, weeklyRank, monthlyRank] = await Promise.all([
+      this.getUserPoints(userId.toString()),
+      LeaderboardService.getUserRank(userId),
+      LeaderboardService.getUserRank(userId, 'weekly'),
+      LeaderboardService.getUserRank(userId, 'monthly')
+    ]);
+
+    return {
+      points,
+      rank: {
+        current: allTimeRank.rank,
+        total: allTimeRank.totalUsers,
+        weekly: weeklyRank.rank,
+        monthly: monthlyRank.rank
+      }
+    };
+  }
+
+  static async getTopUsers(limit: number = 3): Promise<{
+    userId: mongoose.Types.ObjectId;
+    username: string;
+    points: number;
+    rank: number;
+  }[]> {
+    return LeaderboardService.getTopAchievers(limit);
   }
 }

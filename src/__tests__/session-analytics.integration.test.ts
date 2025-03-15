@@ -128,11 +128,14 @@ describe('Session Analytics Integration', () => {
   describe('Analytics Endpoints', () => {
     it('should retrieve session history with pagination', async () => {
       // Create and complete a session
+      const startTime = new Date(Date.now() - 3600000); // 1 hour ago
+      const endTime = new Date(); // now
+      
       const session = await MeditationSession.create({
         userId: new mongoose.Types.ObjectId(userId),
         meditationId: new mongoose.Types.ObjectId(meditationId),
-        startTime: new Date(),
-        endTime: new Date(),
+        startTime: startTime,
+        endTime: endTime,
         status: 'completed',
         interruptions: 0,
         duration: 10,
@@ -146,7 +149,7 @@ describe('Session Analytics Integration', () => {
         userId: new mongoose.Types.ObjectId(userId),
         meditationId: new mongoose.Types.ObjectId(meditationId),
         sessionId: session._id,
-        startTime: session.startTime,
+        startTime: startTime,
         duration: 10,
         durationCompleted: 10,
         completed: true,
@@ -166,11 +169,14 @@ describe('Session Analytics Integration', () => {
 
     it('should retrieve user statistics', async () => {
       // Create and complete a session
+      const startTime = new Date(Date.now() - 3600000); // 1 hour ago
+      const endTime = new Date(); // now
+      
       const session = await MeditationSession.create({
         userId: new mongoose.Types.ObjectId(userId),
         meditationId: new mongoose.Types.ObjectId(meditationId),
-        startTime: new Date(),
-        endTime: new Date(),
+        startTime: startTime,
+        endTime: endTime,
         status: 'completed',
         interruptions: 0,
         duration: 10,
@@ -184,7 +190,7 @@ describe('Session Analytics Integration', () => {
         userId: new mongoose.Types.ObjectId(userId),
         meditationId: new mongoose.Types.ObjectId(meditationId),
         sessionId: session._id,
-        startTime: session.startTime,
+        startTime: startTime,
         duration: 10,
         durationCompleted: 10,
         completed: true,
@@ -204,11 +210,14 @@ describe('Session Analytics Integration', () => {
 
     it('should retrieve mood improvement stats', async () => {
       // Create and complete a session
+      const startTime = new Date(Date.now() - 3600000); // 1 hour ago
+      const endTime = new Date(); // now
+      
       const session = await MeditationSession.create({
         userId: new mongoose.Types.ObjectId(userId),
         meditationId: new mongoose.Types.ObjectId(meditationId),
-        startTime: new Date(),
-        endTime: new Date(),
+        startTime: startTime,
+        endTime: endTime,
         status: 'completed',
         interruptions: 0,
         duration: 10,
@@ -222,7 +231,7 @@ describe('Session Analytics Integration', () => {
         userId: new mongoose.Types.ObjectId(userId),
         meditationId: new mongoose.Types.ObjectId(meditationId),
         sessionId: session._id,
-        startTime: session.startTime,
+        startTime: startTime,
         duration: 10,
         durationCompleted: 10,
         completed: true,
@@ -248,7 +257,7 @@ describe('Session Analytics Integration', () => {
         .set('Authorization', 'Bearer invalid-token');
 
       expect(response.status).toBe(401);
-      expect(response.body.message).toBe('Invalid token');
+      expect(response.body.error).toBe('Invalid token');
     });
   });
 }); 

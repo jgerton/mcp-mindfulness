@@ -18,13 +18,13 @@ export const authenticateToken = async (
 ): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    res.status(401).json({ message: 'No token provided' });
+    res.status(401).json({ error: 'No token provided' });
     return;
   }
 
   const token = authHeader.split(' ')[1];
   if (!token) {
-    res.status(401).json({ message: 'No token provided' });
+    res.status(401).json({ error: 'No token provided' });
     return;
   }
 
@@ -39,7 +39,7 @@ export const authenticateToken = async (
 
     const user = await User.findById(decoded._id);
     if (!user) {
-      res.status(401).json({ message: 'User not found' });
+      res.status(401).json({ error: 'User not found' });
       return;
     }
 
@@ -47,7 +47,10 @@ export const authenticateToken = async (
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(401).json({ error: 'Invalid token' });
     return;
   }
 }; 
+
+// Export alias for backward compatibility
+export const authenticateUser = authenticateToken; 

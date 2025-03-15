@@ -137,7 +137,7 @@ Each document begins with an introduction explaining core concepts and includes 
 
 ## 🤝 Contributing
 
-Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests. All contributions should follow our established [Coding Standards](project-planning/coding-standards.md) and [Testing Standards](project-planning/testing-standards.md).
+Please read our [Contributing Guidelines](./CONTRIBUTING.md) before submitting pull requests. All contributions should follow our established [Coding Standards](project-planning/coding-standards.md) and [Testing Standards](project-planning/testing-standards.md).
 
 ## 📝 License
 

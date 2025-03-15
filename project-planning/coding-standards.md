@@ -130,6 +130,311 @@ export const Component: React.FC<Props> = ({ prop1, prop2 }) => {
 - [TailwindCSS Guidelines](https://tailwindcss.com/docs)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 
+## TypeScript Best Practices
+
+### Type Safety
+
+- Use strict type checking with `"strict": true` in tsconfig.json
+- Avoid using `any` type whenever possible
+- Use proper type guards for nullable values
+
+```typescript
+// INCORRECT: Unsafe property access
+function processUser(user: any) {
+  return user.name.toUpperCase(); // May crash if name is undefined
+}
+
+// CORRECT: Type-safe implementation
+interface User {
+  name?: string;
+  id: string;
+}
+
+function processUser(user: User) {
+  return user.name?.toUpperCase() || 'UNNAMED';
+}
+```
+
+### Handling MongoDB ObjectId Types
+
+```typescript
+// INCORRECT: Inconsistent ID handling
+function getUserById(id: string) {
+  return User.findById(id);
+}
+
+// CORRECT: Consistent ID handling
+function getUserById(id: string | mongoose.Types.ObjectId) {
+  return User.findById(id);
+}
+```
+
+### ObjectId Validation
+
+Always validate MongoDB ObjectIds before using them in queries to prevent errors:
+
+```typescript
+// INCORRECT: No validation before use
+async function getResource(id: string) {
+  return await Resource.findById(id);
+}
+
+// CORRECT: Validate ObjectId before use
+import mongoose from 'mongoose';
+
+async function getResource(id: string) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error('Invalid resource ID format');
+  }
+  return await Resource.findById(id);
+}
+
+// CORRECT: Controller implementation with proper error response
+async function getResourceController(req: Request, res: Response) {
+  const { id } = req.params;
+  
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: 'Invalid resource ID format' });
+  }
+  
+  try {
+    const resource = await Resource.findById(id);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+    return res.json(resource);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+}
+```
+
+### Authentication Token Structure
+
+JWT tokens should include consistent properties to ensure proper authentication:
+
+```typescript
+// INCORRECT: Inconsistent token payload
+const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+
+// CORRECT: Consistent token payload with required fields
+const token = jwt.sign(
+  { 
+    _id: user._id,
+    username: user.username
+  }, 
+  process.env.JWT_SECRET,
+  { expiresIn: '1h' }
+);
+```
+
+### Module Imports and Exports
+
+- Use consistent import paths throughout the codebase
+- Prefer named exports over default exports for better refactoring
+- Organize imports by source (external, internal, relative)
+
+```typescript
+// INCORRECT: Mixed import styles
+import mongoose from 'mongoose';
+import { Schema } from 'mongoose';
+import UserModel from './user.model';
+import { validateEmail } from '../utils';
+
+// CORRECT: Organized imports
+// External dependencies
+import mongoose, { Schema } from 'mongoose';
+
+// Internal modules (using path aliases if configured)
+import { validateEmail } from '@utils/validation';
+
+// Relative imports
+import { User } from './user.model';
+```
+
+### Preventing Circular Dependencies
+
+Circular dependencies can cause module resolution issues and runtime errors:
+
+```typescript
+// INCORRECT: Circular dependency
+// file1.ts
+import { func2 } from './file2';
+export function func1() {
+  return func2();
+}
+
+// file2.ts
+import { func1 } from './file1';
+export function func2() {
+  return func1();
+}
+
+// CORRECT: Break circular dependency with interfaces
+// types.ts
+export interface User {
+  id: string;
+  name: string;
+}
+
+// user.service.ts
+import { User } from './types';
+import { saveToDb } from './db.service';
+
+export function processUser(user: User) {
+  return saveToDb(user);
+}
+
+// db.service.ts
+import { User } from './types';
+
+export function saveToDb(data: User) {
+  // Implementation
+}
+```
+
+### Null Checking and Optional Chaining
+
+```typescript
+// INCORRECT: Unsafe property access
+function getUsername(user) {
+  return user.profile.username;
+}
+
+// CORRECT: Safe property access with optional chaining
+function getUsername(user?: User) {
+  return user?.profile?.username || 'Guest';
+}
+```
+
+### Type Definitions for MongoDB Models
+
+```typescript
+// INCORRECT: Missing or incomplete type definitions
+const userSchema = new Schema({
+  name: String,
+  email: String
+});
+
+// CORRECT: Complete type definitions
+interface IUser extends Document {
+  name: string;
+  email: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const userSchema = new Schema<IUser>(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true }
+  },
+  { timestamps: true }
+);
+```
+
+## Backend Standards
+
+### API Error Handling Standards
+
+All API error responses should follow a consistent format:
+
+```typescript
+// INCORRECT: Inconsistent error formats
+app.get('/resource/:id', (req, res) => {
+  if (!isValid(req.params.id)) {
+    return res.status(400).send('Bad ID format');
+  }
+  
+  if (resourceNotFound) {
+    return res.status(404).json({ message: 'Not found' });
+  }
+  
+  if (!isAuthorized) {
+    return res.status(403).send({ error: 'Not authorized' });
+  }
+});
+
+// CORRECT: Consistent error format
+app.get('/resource/:id', (req, res) => {
+  if (!isValid(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid ID format' });
+  }
+  
+  if (resourceNotFound) {
+    return res.status(404).json({ error: 'Resource not found' });
+  }
+  
+  if (!isAuthorized) {
+    return res.status(403).json({ error: 'Not authorized to access this resource' });
+  }
+});
+```
+
+Use appropriate HTTP status codes:
+- 400: Bad Request (validation errors, malformed requests)
+- 401: Unauthorized (authentication errors)
+- 403: Forbidden (authorization errors)
+- 404: Not Found (resource not found)
+- 409: Conflict (resource already exists, state conflicts)
+- 500: Internal Server Error (unexpected errors)
+
+### Error Handling Best Practices
+
+1. **Be specific with error messages**:
+```typescript
+// INCORRECT: Vague error message
+throw new Error('Invalid input');
+
+// CORRECT: Specific error message
+throw new Error('Username must be between 3 and 20 characters');
+```
+
+2. **Use try/catch blocks for async operations**:
+```typescript
+// INCORRECT: No error handling
+app.get('/users/:id', async (req, res) => {
+  const user = await User.findById(req.params.id);
+  res.json(user);
+});
+
+// CORRECT: Proper error handling
+app.get('/users/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    console.error('Error fetching user:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+```
+
+3. **Create custom error classes for domain-specific errors**:
+```typescript
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+class AuthorizationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthorizationError';
+  }
+}
+
+// Usage
+if (!isValid) {
+  throw new ValidationError('Invalid data format');
+}
+```
+
 ---
 
 *[← Back to Main README](../README.md)*

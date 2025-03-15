@@ -2,190 +2,170 @@ import { Request, Response } from 'express';
 import { Meditation } from '../models/meditation.model';
 import { CreateMeditationInput, UpdateMeditationInput, GetMeditationsQuery } from '../validations/meditation.validation';
 import mongoose from 'mongoose';
+import { MeditationSessionService } from '../services/meditation-session.service';
+import { SessionAnalyticsService } from '../services/session-analytics.service';
+import { MoodType } from '../models/session-analytics.model';
+import { MeditationService } from '../services/meditation.service';
 
 export class MeditationController {
+  private static sessionService = new MeditationSessionService();
+  private static meditationService = new MeditationService();
+  private static sessionAnalyticsService = new SessionAnalyticsService();
+
+  constructor() {
+    MeditationController.sessionService = new MeditationSessionService();
+  }
+
   // Create a new meditation
-  static async create(req: Request<{}, {}, CreateMeditationInput>, res: Response) {
+  static async createMeditation(req: Request, res: Response) {
     try {
-      const meditationData = req.body;
-      if (req.user) {
-        meditationData.authorId = req.user._id;
-      }
-      
-      const meditation = await Meditation.create(meditationData);
-      return res.status(201).json(meditation);
+      const meditation = await MeditationService.createMeditation(req.body);
+      res.status(201).json(meditation);
     } catch (error) {
-      console.error('Error creating meditation:', error);
-      return res.status(500).json({ message: 'Error creating meditation' });
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: 'An unexpected error occurred' });
+      }
     }
   }
 
   // Get all meditations with filtering and pagination
-  static async getAllMeditations(req: Request<{}, {}, {}, GetMeditationsQuery>, res: Response) {
+  static async getAllMeditations(req: Request, res: Response) {
     try {
-      const { page = 1, limit = 10, category, difficulty, type, search } = req.query;
-      const query: any = { isActive: true };
-
-      if (category) query.category = category;
-      if (difficulty) query.difficulty = difficulty;
-      if (type) query.type = type;
-      if (search) {
-        query.$or = [
-          { title: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { tags: { $in: [new RegExp(search, 'i')] } }
-        ];
-      }
-
-      const [meditations, total] = await Promise.all([
-        Meditation.find(query)
-          .skip((page - 1) * limit)
-          .limit(limit)
-          .sort({ createdAt: -1 })
-          .populate('authorId', 'username'),
-        Meditation.countDocuments(query)
-      ]);
-
-      return res.json({
-        meditations,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit)
-      });
+      const meditations = await MeditationService.getAllMeditations();
+      res.json(meditations);
     } catch (error) {
-      console.error('Error getting meditations:', error);
-      return res.status(500).json({ message: 'Error fetching meditations' });
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unexpected error occurred' });
+      }
     }
   }
 
   // Get a single meditation by ID
   static async getMeditationById(req: Request<{ id: string }>, res: Response) {
     try {
-      const { id } = req.params;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid meditation ID' });
-      }
-
-      const meditation = await Meditation.findById(id).populate('authorId', 'username');
+      const meditation = await MeditationService.getMeditationById(req.params.id);
       if (!meditation) {
         return res.status(404).json({ message: 'Meditation not found' });
       }
-
-      return res.json(meditation);
+      res.json(meditation);
     } catch (error) {
-      console.error('Error getting meditation:', error);
-      return res.status(500).json({ message: 'Error fetching meditation' });
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unexpected error occurred' });
+      }
+    }
+  }
+
+  // Get active session
+  static async getActiveSession(req: Request, res: Response) {
+    try {
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+      const activeSession = await MeditationController.sessionService.getActiveSession(userId);
+      res.json(activeSession);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unexpected error occurred' });
+      }
     }
   }
 
   // Start a meditation session
-  static async startMeditation(req: Request<{ id: string }>, res: Response) {
+  static async startSession(req: Request<{ id: string }>, res: Response) {
     try {
-      const { id } = req.params;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid meditation ID' });
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
       }
-
-      const meditation = await Meditation.findById(id);
-      if (!meditation) {
-        return res.status(404).json({ message: 'Meditation not found' });
-      }
-
-      // Here you would typically create a meditation session record
-      // For now, just return success
-      return res.json({ message: 'Meditation session started', meditation });
+      const meditationId = req.params.id;
+      const session = await MeditationController.sessionService.startSession(userId, {
+        meditationId,
+        completed: false,
+        duration: 0,
+        durationCompleted: 0
+      });
+      res.status(201).json(session);
     } catch (error) {
-      console.error('Error starting meditation:', error);
-      return res.status(500).json({ message: 'Error starting meditation session' });
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: 'An unexpected error occurred' });
+      }
+    }
+  }
+
+  // Record interruption
+  static async recordInterruption(req: Request<{ id: string }>, res: Response) {
+    try {
+      const sessionId = req.params.id;
+      const session = await MeditationController.sessionService.recordInterruption(sessionId);
+      res.json(session);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: 'An unexpected error occurred' });
+      }
     }
   }
 
   // Complete a meditation session
-  static async completeMeditation(req: Request<{ id: string }>, res: Response) {
+  static async completeSession(req: Request<{ id: string }>, res: Response) {
     try {
-      const { id } = req.params;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid meditation ID' });
-      }
-
-      const meditation = await Meditation.findById(id);
-      if (!meditation) {
-        return res.status(404).json({ message: 'Meditation not found' });
-      }
-
-      // Here you would typically update the meditation session record
-      // For now, just return success
-      return res.json({ message: 'Meditation session completed', meditation });
+      const sessionId = req.params.id;
+      const completedSession = await MeditationController.sessionService.completeSession(sessionId, req.body);
+      res.json(completedSession);
     } catch (error) {
-      console.error('Error completing meditation:', error);
-      return res.status(500).json({ message: 'Error completing meditation session' });
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: 'An unexpected error occurred' });
+      }
     }
   }
 
   // Update a meditation
-  static async update(req: Request<{ id: string }, {}, UpdateMeditationInput>, res: Response) {
+  static async updateMeditation(req: Request<{ id: string }>, res: Response) {
     try {
-      const { id } = req.params;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid meditation ID' });
-      }
-
-      const meditation = await Meditation.findById(id);
+      const meditation = await MeditationService.updateMeditation(req.params.id, req.body);
       if (!meditation) {
         return res.status(404).json({ message: 'Meditation not found' });
       }
-
-      // Check if user is authorized to update (if they're the author)
-      console.log('Debug - Meditation authorId:', meditation.authorId?.toString());
-      console.log('Debug - Current user ID:', req.user?._id?.toString());
-      console.log('Debug - Types:', {
-        authorIdType: typeof meditation.authorId,
-        userIdType: typeof req.user?._id,
-        authorIdValid: meditation.authorId ? mongoose.Types.ObjectId.isValid(meditation.authorId) : false,
-        userIdValid: req.user?._id ? mongoose.Types.ObjectId.isValid(req.user._id) : false
-      });
-      console.log('Debug - Direct comparison result:', meditation.authorId?.toString() === req.user?._id?.toString());
-      
-      if (meditation.authorId && meditation.authorId.toString() !== req.user?._id?.toString()) {
-        return res.status(403).json({ message: 'Not authorized to update this meditation' });
-      }
-
-      const updatedMeditation = await Meditation.findByIdAndUpdate(
-        id,
-        { $set: req.body },
-        { new: true }
-      ).populate('authorId', 'username');
-
-      return res.json(updatedMeditation);
+      res.json(meditation);
     } catch (error) {
-      console.error('Error updating meditation:', error);
-      return res.status(500).json({ message: 'Error updating meditation' });
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: 'An unexpected error occurred' });
+      }
     }
   }
 
   // Delete a meditation (soft delete by setting isActive to false)
-  static async delete(req: Request<{ id: string }>, res: Response) {
+  static async deleteMeditation(req: Request<{ id: string }>, res: Response) {
     try {
-      const { id } = req.params;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid meditation ID' });
-      }
-
-      const meditation = await Meditation.findById(id);
-      if (!meditation) {
+      const result = await MeditationService.deleteMeditation(req.params.id);
+      if (!result) {
         return res.status(404).json({ message: 'Meditation not found' });
       }
-
-      // Check if user is authorized to delete (if they're the author)
-      if (meditation.authorId && meditation.authorId.toString() !== req.user?._id?.toString()) {
-        return res.status(403).json({ message: 'Not authorized to delete this meditation' });
-      }
-
-      await Meditation.findByIdAndUpdate(id, { isActive: false });
-      return res.status(204).send();
+      res.json({ message: 'Meditation deleted successfully' });
     } catch (error) {
-      console.error('Error deleting meditation:', error);
-      return res.status(500).json({ message: 'Error deleting meditation' });
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unexpected error occurred' });
+      }
     }
   }
 
