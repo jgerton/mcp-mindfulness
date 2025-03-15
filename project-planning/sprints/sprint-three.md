@@ -70,6 +70,13 @@ Documentation and planning artifacts should remain in the `/project-planning` di
 - [x] Create Meditation Session tests tracking issue (`/project-planning/testing/tracking/meditation-session-tests-tracking.md`)
 - [ ] Update implementation status with test information (`/project-planning/workflows/implementation-status.md`)
 
+### Backend Tasks
+- [ ] Create TypeScript migration plan for remaining JavaScript files
+  - [x] Create migration plan document
+  - [ ] Identify all JavaScript files to be migrated
+  - [ ] Prioritize files for migration
+  - [ ] Begin migration of high-priority files
+
 ## Sprint Planning
 
 ### High Priority Tasks
