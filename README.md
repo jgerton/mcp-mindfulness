@@ -48,63 +48,63 @@ The MCP Stress Management and Mindfulness Practices Platform is a comprehensive 
 
 Each document begins with an introduction explaining core concepts and includes helpful resources for new team members.
 
-1. [User Journey](project-planning/user-journey-plan.md)
+1. [User Journey](project-planning/features/user-journey-plan.md)
    - User onboarding flow
    - Stress assessment process
    - Mindfulness path selection
    - Progress tracking
    - *Introduction to integrated wellness journey design*
 
-2. [Learning Path Management](project-planning/learning-path-management-plan.md)
+2. [Learning Path Management](project-planning/workflows/learning-path-management-plan.md)
    - Stress management techniques
    - Mindfulness progression paths
    - Combined practice flows
    - Personalization strategy
    - *Explains dual-focus learning approach*
 
-3. [Learning Analytics](project-planning/learning-analytics-plan.md)
+3. [Learning Analytics](project-planning/workflows/learning-analytics-plan.md)
    - Stress reduction metrics
    - Mindfulness progress tracking
    - Combined wellness insights
    - Impact measurement
    - *Overview of wellness analytics*
 
-4. [Frontend Interface](project-planning/frontend-interface-plan.md)
+4. [Frontend Interface](project-planning/features/frontend-interface-plan.md)
    - Stress management tools
    - Meditation interfaces
    - Integrated dashboard
    - Accessibility standards
    - *Covers dual-purpose UI/UX design*
 
-5. [Document Grounding](project-planning/document-grounding-plan.md)
+5. [Document Grounding](project-planning/workflows/document-grounding-plan.md)
    - Content organization
    - Practice resources
    - Technique documentation
    - Integration guidelines
    - *Content management for dual practices*
 
-6. [Architecture Plan](project-planning/architecture-plan.md)
+6. [Architecture Plan](project-planning/architecture/architecture-plan.md)
    - System design
    - Technical foundation
    - Integration patterns
    - Scalability approach
    - *Technical implementation of dual features*
 
-7. [Coding Standards](project-planning/coding-standards.md)
+7. [Coding Standards](project-planning/standards/coding-standards.md)
    - Development guidelines
    - Component patterns
    - Feature integration
    - Quality practices
    - *Standards for wellness platform code*
 
-8. [Testing Standards](project-planning/testing-standards.md)
+8. [Testing Standards](project-planning/standards/testing-standards.md)
    - Feature validation
    - Integration testing
    - User experience testing
    - Performance metrics
    - *Testing dual-purpose functionality*
 
-9. [Work Flow](project-planning/work-flow.md)
+9. [Work Flow](project-planning/workflows/work-flow.md)
    - Development process
    - Feature planning
    - Release strategy
@@ -137,7 +137,7 @@ Each document begins with an introduction explaining core concepts and includes 
 
 ## 🤝 Contributing
 
-Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests. All contributions should follow our established [Coding Standards](project-planning/coding-standards.md) and [Testing Standards](project-planning/testing-standards.md).
+Please read our [Contributing Guidelines](./CONTRIBUTING.md) before submitting pull requests. All contributions should follow our established [Coding Standards](project-planning/standards/coding-standards.md) and [Testing Standards](project-planning/standards/testing-standards.md).
 
 ## 📝 License
 

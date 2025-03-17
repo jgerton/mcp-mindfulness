@@ -39,7 +39,9 @@ describe('SessionAnalyticsService', () => {
     // Create test sessions with analytics
     const session1 = await MeditationSession.create({
       userId,
-      meditationId,
+      title: 'Test Meditation Session 1',
+      type: 'guided',
+      guidedMeditationId: meditationId,
       startTime: new Date('2024-03-12T10:00:00'),
       endTime: new Date('2024-03-12T10:10:00'),
       duration: 10,
@@ -52,7 +54,9 @@ describe('SessionAnalyticsService', () => {
 
     const session2 = await MeditationSession.create({
       userId,
-      meditationId,
+      title: 'Test Meditation Session 2',
+      type: 'guided',
+      guidedMeditationId: meditationId,
       startTime: new Date('2024-03-12T11:00:00'),
       endTime: new Date('2024-03-12T11:10:00'),
       duration: 10,

@@ -7,6 +7,7 @@
 - [Architecture Plan](architecture-plan.md) - Testing infrastructure for integrated features
 - [Work Flow](work-flow.md) - Development and testing process
 - [Learning Analytics](learning-analytics-plan.md) - Wellness metrics validation
+- [Test Documentation Template](testing/test-documentation-template.md) - Template for documenting skipped tests
 
 ## Overview
 This document outlines the testing standards and practices for the MCP Stress Management and Mindfulness Practices Platform. It serves as a guide for ensuring both stress management and mindfulness features are thoroughly tested and work seamlessly together.
@@ -205,6 +206,29 @@ it('should handle errors', async () => {
 });
 ```
 
+### API Error Response Standards
+- All API error responses must follow a consistent format with an `error` property containing the error message
+- Error responses should include appropriate HTTP status codes:
+  - 400: Bad Request (validation errors, malformed requests)
+  - 401: Unauthorized (authentication errors)
+  - 403: Forbidden (authorization errors)
+  - 404: Not Found (resource not found)
+  - 409: Conflict (resource already exists, state conflicts)
+  - 500: Internal Server Error (unexpected errors)
+- Test both the status code and error message format
+- Example:
+```typescript
+it('should return 404 with proper error format when resource not found', async () => {
+  const response = await request(app)
+    .get('/api/resource/nonexistent-id')
+    .set('Authorization', `Bearer ${validToken}`);
+  
+  expect(response.status).toBe(404);
+  expect(response.body).toHaveProperty('error');
+  expect(response.body.error).toBe('Resource not found');
+});
+```
+
 ## Best Practices
 
 ### 1. Test Organization
@@ -255,6 +279,330 @@ it('should handle async operation', async () => {
 - [Jest Documentation](https://jestjs.io/docs/getting-started)
 - [Testing Library Best Practices](https://testing-library.com/docs/react-testing-library/intro/)
 - [MongoDB Memory Server Guide](https://github.com/nodkz/mongodb-memory-server)
+
+## Test Reliability & Common Pitfalls
+
+### Database Connection Management
+
+To prevent the common `MongooseError: Can't call openUri() on an active connection with different connection strings` error:
+
+```typescript
+// INCORRECT: Multiple direct connections
+beforeAll(async () => {
+  await mongoose.connect(process.env.MONGODB_TEST_URI);
+});
+
+// CORRECT: Use a shared connection helper
+import { dbHelper } from '../helpers/db';
+
+beforeAll(async () => {
+  await dbHelper.connect();
+});
+
+afterAll(async () => {
+  await dbHelper.disconnect();
+});
+
+beforeEach(async () => {
+  await dbHelper.clearDatabase();
+});
+```
+
+### TypeScript Testing Best Practices
+
+#### Handling Type Errors in Tests
+
+When working with Mongoose documents and TypeScript, you'll often encounter type errors related to property access. Here are best practices to avoid common issues:
+
+1. **Properly Type Error Variables**:
+   ```typescript
+   // INCORRECT: Untyped error variable
+   let error;
+   try {
+     await model.save();
+   } catch (err) {
+     error = err;
+   }
+   
+   // CORRECT: Explicitly type the error variable
+   let error: any;
+   try {
+     await model.save();
+   } catch (err) {
+     error = err;
+   }
+   ```
+
+2. **Interface Extensions for Mongoose Documents**:
+   ```typescript
+   // Define interface extensions for documents with custom properties
+   interface IAchievementDocument extends mongoose.Document, IAchievement {
+     progress: number;
+     target: number;
+     completed: boolean;
+     completedAt: Date;
+   }
+   
+   // Use the extended interface in tests
+   const achievement = await Achievement.findById(id) as IAchievementDocument;
+   expect(achievement.progress).toBe(expectedProgress);
+   ```
+
+3. **Type Assertions for Mongoose Methods**:
+   ```typescript
+   // INCORRECT: Direct property access without type assertion
+   const result = await Model.findById(id);
+   expect(result.customProperty).toBe(expectedValue);
+   
+   // CORRECT: Use type assertion
+   const result = await Model.findById(id) as IModelDocument;
+   expect(result.customProperty).toBe(expectedValue);
+   ```
+
+4. **Consistent Interface Definitions**:
+   - Ensure interfaces in models match their implementations
+   - Keep property names consistent across the codebase
+   - Document virtual properties in interfaces
+
+5. **Type Guards for Null Checks**:
+   ```typescript
+   // INCORRECT: No null check
+   const result = await Model.findById(nonExistentId);
+   expect(result.property).toBe(value); // May cause null reference error
+   
+   // CORRECT: Use type guard
+   const result = await Model.findById(nonExistentId);
+   expect(result).not.toBeNull();
+   if (result) {
+     expect(result.property).toBe(value);
+   }
+   ```
+
+#### Common TypeScript Errors and Solutions
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `Property 'X' does not exist on type 'Document<unknown, {}, IModel>'` | Missing property in interface | Add the property to the interface definition |
+| `Subsequent property declarations must have the same type` | Conflicting type definitions | Ensure consistent types across declarations |
+| `Type 'X' is not assignable to type 'Y'` | Type mismatch | Use proper type assertions or update interface |
+| `Object is possibly null or undefined` | Missing null check | Add null check or use optional chaining |
+| `Cannot invoke an object which is possibly undefined` | Calling method on possibly undefined object | Add null check before method call |
+
+#### Test Utility Functions for Type Handling
+
+Create utility functions in your test helpers to handle common type operations:
+
+```typescript
+// src/__tests__/utils/test-utils.ts
+
+/**
+ * Type-safe error handler for testing validation errors
+ */
+export async function expectValidationError<T>(
+  action: () => Promise<T>,
+  expectedErrorFields: string[]
+): Promise<void> {
+  let error: any;
+  try {
+    await action();
+    fail('Expected validation error but none was thrown');
+  } catch (err) {
+    error = err;
+  }
+  
+  expect(error).toBeDefined();
+  expect(error.name).toBe('ValidationError');
+  
+  for (const field of expectedErrorFields) {
+    expect(error.errors[field]).toBeDefined();
+  }
+}
+
+/**
+ * Type-safe document finder with proper typing
+ */
+export async function findDocumentById<T extends mongoose.Document>(
+  model: mongoose.Model<T>,
+  id: mongoose.Types.ObjectId | string
+): Promise<T> {
+  const document = await model.findById(id);
+  if (!document) {
+    throw new Error(`Document not found with id: ${id}`);
+  }
+  return document;
+}
+```
+
+### Authentication & Authorization Testing
+
+#### Authentication Testing
+- Test tokens must include all required properties (`_id` and `username` at minimum)
+- Always test both successful authentication and failure cases
+- Use consistent token generation in tests
+- Example:
+```typescript
+// Token generation helper
+const generateToken = (user = { _id: 'test-id', username: 'test-user' }) => {
+  return jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '1h' });
+};
+
+// Authentication success test
+it('should authenticate with valid token', async () => {
+  const token = generateToken();
+  const response = await request(app)
+    .get('/api/protected-route')
+    .set('Authorization', `Bearer ${token}`);
+  
+  expect(response.status).toBe(200);
+});
+
+// Authentication failure test
+it('should reject invalid token', async () => {
+  const response = await request(app)
+    .get('/api/protected-route')
+    .set('Authorization', 'Bearer invalid-token');
+  
+  expect(response.status).toBe(401);
+  expect(response.body).toHaveProperty('error');
+  expect(response.body.error).toBe('Invalid token');
+});
+```
+
+#### Authorization Testing
+- All resource access must include ownership verification tests
+- Test that users cannot access resources they don't own
+- Example:
+```typescript
+it('should prevent access to another user\'s resource', async () => {
+  // Create resource owned by user1
+  const user1 = { _id: 'user1-id', username: 'user1' };
+  const resource = await Resource.create({ 
+    name: 'Test Resource',
+    userId: user1._id
+  });
+  
+  // Attempt access with user2's token
+  const user2 = { _id: 'user2-id', username: 'user2' };
+  const token = generateToken(user2);
+  
+  const response = await request(app)
+    .get(`/api/resources/${resource._id}`)
+    .set('Authorization', `Bearer ${token}`);
+  
+  expect(response.status).toBe(403);
+  expect(response.body).toHaveProperty('error');
+  expect(response.body.error).toBe('Access denied');
+});
+```
+
+### Test Lifecycle Management
+
+#### Handling Skipped Tests
+- Use the standardized [Test Documentation Template](testing/test-documentation-template.md) for all skipped tests
+- Document the reason for skipping, functionality being tested, and implementation requirements
+- Review skipped tests quarterly to determine if they can be unskipped
+- Example of a properly documented skipped test:
+```typescript
+/**
+ * @skipped
+ * @reason Feature not yet implemented
+ * 
+ * @description
+ * Tests that a user receives the appropriate achievement after completing a milestone
+ * 
+ * @functionality
+ * Achievement System
+ * 
+ * @implementation-requirements
+ * - Achievement model must be implemented
+ * - Achievement service must be implemented
+ * - Milestone tracking must be in place
+ * 
+ * @target-completion
+ * Sprint 3
+ */
+it.skip('should award achievement when milestone is reached', async () => {
+  // Test implementation
+});
+```
+
+#### Test Review Process
+- Conduct quarterly reviews of all skipped tests
+- Document decisions to keep tests skipped or implement them
+- Update test documentation with current status
+- Create tracking issues for tests that should be unskipped in upcoming sprints
+
+### MongoDB Testing Best Practices
+
+#### Connection Management
+- Use MongoDB Memory Server for tests to avoid affecting production data
+- Establish a single connection per test suite
+- Properly close connections after tests complete
+- Example:
+```typescript
+// src/__tests__/utils/test-db.js
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const mongoose = require('mongoose');
+
+let mongoServer;
+
+// Connect to the in-memory database
+module.exports.connect = async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
+  console.log('Connected to in-memory MongoDB server');
+};
+
+// Close the connection and stop the server
+module.exports.closeDatabase = async () => {
+  await mongoose.connection.dropDatabase();
+  await mongoose.connection.close();
+  await mongoServer.stop();
+  console.log('Closed in-memory MongoDB server');
+};
+
+// Clear all collections
+module.exports.clearDatabase = async () => {
+  const collections = mongoose.connection.collections;
+  for (const key in collections) {
+    const collection = collections[key];
+    await collection.deleteMany({});
+  }
+};
+```
+
+#### ObjectId Validation
+- Always validate ObjectId parameters before using them
+- Use consistent type handling (string vs ObjectId)
+- Compare ObjectIds as strings for equality checks
+- Example:
+```typescript
+// Controller validation
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+// In controller
+if (!isValidObjectId(req.params.id)) {
+  return res.status(400).json({ error: 'Invalid ID format' });
+}
+
+// In tests
+it('should validate ObjectId', async () => {
+  const invalidId = 'not-an-object-id';
+  const response = await request(app).get(`/api/resources/${invalidId}`);
+  
+  expect(response.status).toBe(400);
+  expect(response.body.error).toBe('Invalid ID format');
+});
+
+it('should compare ObjectIds correctly', async () => {
+  const resource = await Resource.create({ name: 'Test' });
+  const found = await Resource.findById(resource._id);
+  
+  // Convert both to strings for comparison
+  expect(found._id.toString()).toBe(resource._id.toString());
+});
+```
 
 ---
 

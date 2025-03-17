@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+[architecture-plan.md](mdc:project-planning/architecture-plan.md)
+[backend-feature-review.md](mdc:project-planning/backend-feature-review.md)
+[coding-standards.md](mdc:project-planning/coding-standards.md)
+[document-grounding-plan.md](mdc:project-planning/document-grounding-plan.md)
+[frontend-interface-plan.md](mdc:project-planning/frontend-interface-plan.md)
+[implementation-status.md](mdc:project-planning/implementation-status.md)
+[learning-analytics-plan.md](mdc:project-planning/learning-analytics-plan.md)
+[learning-path-management-plan.md](mdc:project-planning/learning-path-management-plan.md)
+[testing-standards.md](mdc:project-planning/testing-standards.md)
+[user-journey-plan.md](mdc:project-planning/user-journey-plan.md)
+[work-flow.md](mdc:project-planning/work-flow.md)
+

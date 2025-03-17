@@ -1,85 +1,174 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IAchievement {
-  _id?: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId | string;
-  type: string;
-  title: string;
+/**
+ * Interface representing an Achievement document in MongoDB
+ */
+export interface IAchievement extends Document {
+  name: string;
   description: string;
+  category: 'time' | 'duration' | 'streak' | 'milestone' | 'special';
+  criteria: {
+    type: string;
+    value: any;
+  };
+  icon: string;
   points: number;
+  // Add missing properties used in achievement service
+  progress?: number;
+  target?: number;
+  completed?: boolean;
+  completedAt?: Date;
+  type?: string;
+  userId?: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Create an extended interface for Mongoose documents with achievement properties
+ */
+export interface IAchievementDocument extends mongoose.Document, IAchievement {
   progress: number;
   target: number;
   completed: boolean;
   completedAt?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
+  type: string;
+  userId: mongoose.Types.ObjectId;
 }
 
-const achievementSchema = new mongoose.Schema<IAchievement>({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+/**
+ * Schema for the Achievement model
+ */
+const AchievementSchema: Schema = new Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Achievement name is required'],
+      trim: true,
+      maxlength: [100, 'Achievement name cannot be more than 100 characters']
+    },
+    description: {
+      type: String,
+      required: [true, 'Achievement description is required'],
+      trim: true,
+      maxlength: [500, 'Achievement description cannot be more than 500 characters']
+    },
+    category: {
+      type: String,
+      required: [true, 'Achievement category is required'],
+      enum: {
+        values: ['time', 'duration', 'streak', 'milestone', 'special'],
+        message: 'Achievement category must be one of: time, duration, streak, milestone, special'
+      }
+    },
+    criteria: {
+      type: {
+        type: String,
+        required: [true, 'Criteria type is required']
+      },
+      value: {
+        type: Schema.Types.Mixed,
+        required: [true, 'Criteria value is required']
+      }
+    },
+    icon: {
+      type: String,
+      required: [true, 'Achievement icon is required'],
+      trim: true
+    },
+    points: {
+      type: Number,
+      required: [true, 'Achievement points are required'],
+      min: [0, 'Achievement points cannot be negative']
+    },
+    // Add fields used by the achievement service
+    type: {
+      type: String,
+      index: true
+    },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    },
+    progress: {
+      type: Number,
+      default: 0
+    },
+    target: {
+      type: Number,
+      default: 0
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    completedAt: {
+      type: Date
+    }
   },
-  type: {
-    type: String,
-    required: true
-  },
-  title: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  points: {
-    type: Number,
-    required: true
-  },
-  progress: {
-    type: Number,
-    default: 0
-  },
-  target: {
-    type: Number,
-    required: true
-  },
-  completed: {
-    type: Boolean,
-    default: false
-  },
-  completedAt: {
-    type: Date
+  {
+    timestamps: true
   }
-}, {
-  timestamps: true
-});
+);
 
-export const Achievement = mongoose.model<IAchievement>('Achievement', achievementSchema);
+/**
+ * Interface representing a UserAchievement document in MongoDB
+ */
+export interface IUserAchievement extends Document {
+  userId: mongoose.Types.ObjectId;
+  achievementId: mongoose.Types.ObjectId;
+  progress: number;
+  isCompleted: boolean;
+  dateEarned?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-// Achievement configurations
-export const ACHIEVEMENT_CONFIGS: Record<string, { maxProgress: number, points: number }> = {
-  early_bird: { maxProgress: 5, points: 100 },
-  night_owl: { maxProgress: 5, points: 100 },
-  consistency_master: { maxProgress: 7, points: 150 },
-  marathon_meditator: { maxProgress: 1, points: 200 },
-  quick_zen: { maxProgress: 10, points: 100 },
-  balanced_practice: { maxProgress: 3, points: 150 },
-  week_warrior: { maxProgress: 7, points: 200 },
-  monthly_master: { maxProgress: 30, points: 500 },
-  zen_master: { maxProgress: 100, points: 1000 },
-  mood_lifter: { maxProgress: 10, points: 150 },
-  zen_state: { maxProgress: 5, points: 200 },
-  emotional_growth: { maxProgress: 20, points: 300 },
-  social_butterfly: { maxProgress: 10, points: 200 },
-  group_guide: { maxProgress: 5, points: 300 },
-  community_pillar: { maxProgress: 20, points: 400 },
-  synchronized_souls: { maxProgress: 3, points: 250 },
-  meditation_circle: { maxProgress: 1, points: 150 },
-  friend_zen: { maxProgress: 5, points: 200 },
-  group_streak: { maxProgress: 7, points: 350 },
-  mindful_mentor: { maxProgress: 10, points: 400 },
-  harmony_seeker: { maxProgress: 15, points: 300 },
-  zen_network: { maxProgress: 30, points: 500 }
+/**
+ * Schema for the UserAchievement model
+ */
+const UserAchievementSchema: Schema = new Schema(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User ID is required']
+    },
+    achievementId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Achievement',
+      required: [true, 'Achievement ID is required']
+    },
+    progress: {
+      type: Number,
+      required: [true, 'Achievement progress is required'],
+      min: [0, 'Achievement progress cannot be negative'],
+      max: [100, 'Achievement progress cannot exceed 100']
+    },
+    isCompleted: {
+      type: Boolean,
+      default: false
+    },
+    dateEarned: {
+      type: Date,
+      default: null
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+// Create indexes for better query performance
+UserAchievementSchema.index({ userId: 1, achievementId: 1 }, { unique: true });
+UserAchievementSchema.index({ userId: 1, isCompleted: 1 });
+
+// Create the models
+export const Achievement = mongoose.model<IAchievement>('Achievement', AchievementSchema);
+export const UserAchievement = mongoose.model<IUserAchievement>('UserAchievement', UserAchievementSchema);
+
+export default {
+  Achievement,
+  UserAchievement
 }; 

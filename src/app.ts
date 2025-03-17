@@ -10,6 +10,12 @@ import achievementRoutes from './routes/achievement.routes';
 import groupSessionRoutes from './routes/group-session.routes';
 import friendRoutes from './routes/friend.routes';
 import chatRoutes from './routes/chat.routes';
+import sessionAnalyticsRoutes from './routes/session-analytics.routes';
+import meditationSessionRoutes from './routes/meditation-session.routes';
+import cacheStatsRoutes from './routes/cache-stats.routes';
+import stressManagementRoutes from './routes/stress-management.routes';
+import breathingRoutes from './routes/breathing.routes';
+import pmrRoutes from './routes/pmr.routes';
 
 const app = express();
 const httpServer = createServer(app);
@@ -30,5 +36,11 @@ app.use('/api/achievements', achievementRoutes);
 app.use('/api/group-sessions', groupSessionRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/analytics', sessionAnalyticsRoutes);
+app.use('/api/meditation-sessions', meditationSessionRoutes);
+app.use('/api/cache-stats', cacheStatsRoutes);
+app.use('/api/stress-management', stressManagementRoutes);
+app.use('/api/breathing', breathingRoutes);
+app.use('/api/pmr', pmrRoutes);
 
 export { app, httpServer }; 

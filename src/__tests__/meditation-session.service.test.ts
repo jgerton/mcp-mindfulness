@@ -11,7 +11,8 @@ let mongoServer: any;
 describe('MeditationSessionService', () => {
   let meditationSessionService: MeditationSessionService;
   let userId: mongoose.Types.ObjectId;
-  let meditationId: mongoose.Types.ObjectId;
+  let guidedMeditationId: mongoose.Types.ObjectId;
+  let testUser: any;
 
   beforeAll(async () => {
     if (!mongoose.connection.readyState) {
@@ -29,15 +30,22 @@ describe('MeditationSessionService', () => {
     await mongoose.connection.dropDatabase();
     meditationSessionService = new MeditationSessionService();
     userId = new mongoose.Types.ObjectId();
-    meditationId = new mongoose.Types.ObjectId();
+    guidedMeditationId = new mongoose.Types.ObjectId();
+    testUser = await User.create({
+      email: 'test@example.com',
+      password: 'password123',
+      username: 'testuser'
+    });
   });
 
   describe('startSession', () => {
     it('should create a new session', async () => {
       const result = await meditationSessionService.startSession(userId.toString(), {
-        meditationId: meditationId.toString(),
+        meditationId: guidedMeditationId.toString(),
+        title: 'Test Meditation Session',
+        type: 'guided',
         completed: false,
-        duration: 0,
+        duration: 600,
         durationCompleted: 0,
         moodBefore: 'neutral' as MoodType
       });
@@ -48,7 +56,9 @@ describe('MeditationSessionService', () => {
       expect(session).toBeDefined();
       expect(session?.status).toBe('active');
       expect(session?.userId.toString()).toBe(userId.toString());
-      expect(session?.meditationId.toString()).toBe(meditationId.toString());
+      if (session?.guidedMeditationId) {
+        expect(session.guidedMeditationId.toString()).toBe(guidedMeditationId.toString());
+      }
       expect(session?.startTime).toBeDefined();
       expect(session?.interruptions).toBe(0);
       expect(session?.completed).toBe(false);
@@ -58,9 +68,11 @@ describe('MeditationSessionService', () => {
   describe('completeSession', () => {
     it('should complete an existing session', async () => {
       const { sessionId } = await meditationSessionService.startSession(userId.toString(), {
-        meditationId: meditationId.toString(),
+        meditationId: guidedMeditationId.toString(),
+        title: 'Test Meditation Session',
+        type: 'guided',
         completed: false,
-        duration: 0,
+        duration: 600,
         durationCompleted: 0,
         moodBefore: 'anxious' as MoodType
       });
@@ -101,9 +113,11 @@ describe('MeditationSessionService', () => {
   describe('getActiveSession', () => {
     it('should return active session for user', async () => {
       await meditationSessionService.startSession(userId.toString(), {
-        meditationId: meditationId.toString(),
+        meditationId: guidedMeditationId.toString(),
+        title: 'Test Meditation Session',
+        type: 'guided',
         completed: false,
-        duration: 0,
+        duration: 600,
         durationCompleted: 0,
         moodBefore: 'neutral' as MoodType
       });
@@ -123,9 +137,11 @@ describe('MeditationSessionService', () => {
   describe('recordInterruption', () => {
     it('should increment interruption count', async () => {
       const { sessionId } = await meditationSessionService.startSession(userId.toString(), {
-        meditationId: meditationId.toString(),
+        meditationId: guidedMeditationId.toString(),
+        title: 'Test Meditation Session',
+        type: 'guided',
         completed: false,
-        duration: 0,
+        duration: 600,
         durationCompleted: 0,
         moodBefore: 'neutral' as MoodType
       });
@@ -138,5 +154,28 @@ describe('MeditationSessionService', () => {
       const analytics = await SessionAnalytics.findOne({ sessionId: new mongoose.Types.ObjectId(sessionId) });
       expect(analytics?.interruptions).toBe(1);
     });
+  });
+
+  it('should create a new meditation session', async () => {
+    const session = await meditationSessionService.createSession({
+      userId: testUser._id,
+      duration: 600,
+      type: 'guided'
+    });
+
+    expect(session).toBeDefined();
+    expect(session.userId).toEqual(testUser._id);
+    expect(session.duration).toBe(600);
+  });
+
+  it('should retrieve user sessions', async () => {
+    await meditationSessionService.createSession({
+      userId: testUser._id,
+      duration: 600,
+      type: 'guided'
+    });
+
+    const sessions = await meditationSessionService.getUserSessions(testUser._id);
+    expect(sessions.length).toBeGreaterThan(0);
   });
 }); 

@@ -15,8 +15,7 @@ const chatMessageSchema = new mongoose.Schema<IChatMessage>(
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'GroupSession',
-      required: true,
-      index: true
+      required: true
     },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
