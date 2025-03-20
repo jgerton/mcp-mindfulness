@@ -143,18 +143,103 @@ Please read our [Contributing Guidelines](./CONTRIBUTING.md) before submitting p
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-<!-- TODO ## 🔗 Additional Resources
+## Test Setup Improvements
 
-- [Project Wiki](https://github.com/your-org/mcp-mindfulness/wiki)
-- [API Documentation](https://api-docs.mcp-mindfulness.com)
-- [User Guide](https://docs.mcp-mindfulness.com)
+The test setup has been improved to properly handle database connections and server cleanup:
 
-## 📞 Support
+1. **Connection Management**:
+   - Added proper connection handling in `test-db.ts` with connection options for stability
+   - Ensured connections are properly closed after tests
+   - Added delays to allow async operations to complete
 
-For support, please:
-1. Check our [Documentation](https://docs.mcp-mindfulness.com)
-2. Search [Issues](https://github.com/your-org/mcp-mindfulness/issues)
-3. Create a new issue if needed -->
+2. **Server Cleanup**:
+   - Added a `close` method to the `SocketManager` class to properly clean up socket connections
+   - Enhanced the `closeServer` function to close both HTTP server and socket connections
+
+3. **Test Configuration**:
+   - Updated Jest configuration with better timeout settings
+   - Added `detectOpenHandles` to identify resource leaks
+   - Set `maxWorkers: 1` to run tests sequentially and avoid connection conflicts
+
+4. **Index Management**:
+   - Fixed duplicate index warnings by ensuring indexes are properly defined
+   - Added clear comments to explain index patterns
+
+These improvements help ensure tests run reliably and resources are properly cleaned up between tests.
+
+## 🔧 Development
+
+### Error Handling Guidelines
+
+The application implements a comprehensive error handling strategy to ensure consistent error responses, appropriate logging, and a smooth user experience when issues occur.
+
+#### Error Response Format
+
+All API errors follow this standardized format:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Technical error message",
+    "category": "VALIDATION|SECURITY|BUSINESS|TECHNICAL",
+    "timestamp": "ISO timestamp",
+    "requestId": "Request ID for tracing",
+    "userMessage": "User-friendly message",
+    "details": { 
+      // Additional contextual information
+    },
+    "retryable": true|false
+  }
+}
+```
+
+#### Error Categories
+
+Errors are categorized into four types:
+
+- **VALIDATION**: User input or request format issues
+- **SECURITY**: Authentication and authorization failures
+- **BUSINESS**: Business logic violations or invalid operations
+- **TECHNICAL**: System/infrastructure issues or unexpected errors
+
+#### Best Practices
+
+1. **Use AppError class**: Create errors with the `AppError` class to ensure proper categorization and severity.
+
+```typescript
+throw new AppError(
+  'Resource not found',
+  ErrorCodes.NOT_FOUND,
+  ErrorCategory.BUSINESS
+);
+```
+
+2. **Include Context**: Add relevant context to errors for debugging and logging.
+
+```typescript
+throw new AppError(
+  'User profile update failed',
+  ErrorCodes.DATABASE_ERROR,
+  ErrorCategory.TECHNICAL,
+  ErrorSeverity.ERROR,
+  { userId: id, operation: 'update' }
+);
+```
+
+3. **User-Friendly Messages**: Always provide clear, non-technical messages for end users.
+
+4. **Logging Level Appropriateness**: Use the correct severity level for logging:
+   - `ERROR`: Unexpected failures requiring attention
+   - `WARNING`: Handled issues that might need investigation
+   - `INFO`: Normal but notable events
+   - `DEBUG`: Detailed development information
+
+5. **Safe Error Details**: Never expose sensitive information in error responses.
+
+6. **Retryable Indication**: Indicate if an operation can be retried successfully.
+
+See `src/middleware/error-handler.middleware.ts` for implementation details.
 
 ---
 
