@@ -16,6 +16,10 @@ import cacheStatsRoutes from './routes/cache-stats.routes';
 import stressManagementRoutes from './routes/stress-management.routes';
 import breathingRoutes from './routes/breathing.routes';
 import pmrRoutes from './routes/pmr.routes';
+import stressRoutes from './routes/stress.routes';
+import exportRoutes from './routes/export.routes';
+import stressTechniqueRoutes from './routes/stress-technique.routes';
+import { setupSwagger } from './config/swagger';
 
 const app = express();
 const httpServer = createServer(app);
@@ -25,8 +29,20 @@ const socketManager = new SocketManager(httpServer);
 
 // Middleware
 app.use(cors());
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:'],
+    },
+  },
+}));
 app.use(express.json());
+
+// Setup Swagger
+setupSwagger(app);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -42,5 +58,8 @@ app.use('/api/cache-stats', cacheStatsRoutes);
 app.use('/api/stress-management', stressManagementRoutes);
 app.use('/api/breathing', breathingRoutes);
 app.use('/api/pmr', pmrRoutes);
+app.use('/api/stress', stressRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/stress-techniques', stressTechniqueRoutes);
 
 export { app, httpServer }; 

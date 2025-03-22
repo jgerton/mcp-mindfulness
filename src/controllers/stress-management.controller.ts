@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { StressManagementService } from '../services/stress-management.service';
-import { StressAssessment, UserPreferences } from '../models/stress.model';
+import { StressAssessmentLegacy, UserPreferences } from '../models/stress.model';
 
 export class StressManagementController {
   static async submitAssessment(req: Request, res: Response): Promise<void> {
@@ -36,7 +36,7 @@ export class StressManagementController {
         return;
       }
 
-      const history = await StressAssessment.find({
+      const history = await StressAssessmentLegacy.find({
         userId,
         timestamp: {
           $gte: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -60,7 +60,7 @@ export class StressManagementController {
         return;
       }
 
-      const latestAssessment = await StressAssessment.findOne({ userId })
+      const latestAssessment = await StressAssessmentLegacy.findOne({ userId })
         .sort({ timestamp: -1 });
 
       if (!latestAssessment) {
@@ -137,7 +137,7 @@ export class StressManagementController {
 
       // Get last 30 days of assessments
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const assessments = await StressAssessment.find({
+      const assessments = await StressAssessmentLegacy.find({
         userId,
         timestamp: { $gte: thirtyDaysAgo }
       }).sort({ timestamp: 1 });
@@ -157,12 +157,12 @@ export class StressManagementController {
     }
   }
 
-  private static calculateAverageStressLevel(assessments: StressAssessment[]): number {
+  private static calculateAverageStressLevel(assessments: StressAssessmentLegacy[]): number {
     if (!assessments.length) return 0;
     return assessments.reduce((sum, assessment) => sum + (assessment.score || 0), 0) / assessments.length;
   }
 
-  private static findCommonTriggers(assessments: StressAssessment[]): string[] {
+  private static findCommonTriggers(assessments: StressAssessmentLegacy[]): string[] {
     const triggerCount = new Map<string, number>();
     
     assessments.forEach(assessment => {
@@ -177,7 +177,7 @@ export class StressManagementController {
       .map(([trigger]) => trigger);
   }
 
-  private static analyzeTrend(assessments: StressAssessment[]): 'IMPROVING' | 'WORSENING' | 'STABLE' {
+  private static analyzeTrend(assessments: StressAssessmentLegacy[]): 'IMPROVING' | 'WORSENING' | 'STABLE' {
     if (assessments.length < 2) return 'STABLE';
 
     const firstHalf = assessments.slice(0, Math.floor(assessments.length / 2));
@@ -191,7 +191,7 @@ export class StressManagementController {
     return 'STABLE';
   }
 
-  private static findPeakStressTimes(assessments: StressAssessment[]): string[] {
+  private static findPeakStressTimes(assessments: StressAssessmentLegacy[]): string[] {
     const hourlyStress = new Map<number, number>();
     
     assessments.forEach(assessment => {
