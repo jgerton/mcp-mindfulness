@@ -1,6 +1,7 @@
 import { StressLevel, StressAssessmentLegacy, StressReduction, TechniqueType } from '../models/stress.model';
 import { UserService, UserPreferences } from './user.service';
 import mongoose from 'mongoose';
+import { StressAssessmentModel, UserModel } from '../models/stress.model';
 
 interface StressAssessmentData {
   score: number;
@@ -35,18 +36,29 @@ export class StressManagementService {
     return stressLevel;
   }
 
-  static async getRecommendations(userId: string): Promise<StressReduction[]> {
-    const userPrefs = await UserService.getUserPreferences(userId);
-    const recentAssessments = await this.getRecentAssessments(userId);
-    const currentLevel = recentAssessments[0]?.level || 'MODERATE';
-
-    // Get recommendations based on stress level and preferences
-    const recommendations = this.generateRecommendations(currentLevel, userPrefs);
+  static async getRecommendations(userId: mongoose.Types.ObjectId, stressLevel?: number): Promise<Recommendation[]> {
+    // Get user's current stress level if not provided
+    let currentLevel = stressLevel;
+    if (currentLevel === undefined) {
+      const latestAssessment = await StressAssessmentModel.findOne({ userId }).sort({ timestamp: -1 });
+      currentLevel = latestAssessment?.stressLevel || 5; // Default to medium if no assessments
+    }
     
-    return recommendations.map(rec => ({
-      ...rec,
-      technique: rec.technique as any // Type assertion to satisfy TypeScript
-    }));
+    // Get user preferences
+    const userPrefs = await UserModel.findById(userId).select('preferences').lean();
+    
+    // Add null check before using userPrefs
+    if (!userPrefs || !userPrefs.preferences) {
+      // Use default preferences if none found
+      return this.generateRecommendations(currentLevel, {
+        duration: 'medium',
+        intensity: 'medium',
+        focus: ['stress-reduction']
+      });
+    }
+    
+    const recommendations = this.generateRecommendations(currentLevel, userPrefs.preferences);
+    return recommendations;
   }
 
   static async recordStressChange(

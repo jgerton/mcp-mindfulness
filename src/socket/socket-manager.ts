@@ -109,4 +109,15 @@ export class SocketManager {
       });
     });
   }
+
+  /**
+   * Close all socket connections and shut down the socket server
+   */
+  public close() {
+    // Disconnect all connected sockets
+    this.io.disconnectSockets();
+    // Close the socket io server instance
+    this.io.close();
+    console.log('Socket server closed');
+  }
 } 

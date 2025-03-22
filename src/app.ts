@@ -62,4 +62,13 @@ app.use('/api/stress', stressRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/stress-techniques', stressTechniqueRoutes);
 
-export { app, httpServer }; 
+/**
+ * Function to properly close the server and any database connections
+ */
+const closeServer = () => {
+  httpServer.close();
+  // Close any other connections if needed
+  socketManager.close();
+};
+
+export { app, httpServer, closeServer }; 

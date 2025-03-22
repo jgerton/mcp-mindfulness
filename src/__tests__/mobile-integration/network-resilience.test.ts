@@ -7,20 +7,19 @@ import { setupAppForTesting } from '../setup';
 describe('Mobile Network Resilience Tests', () => {
   let app: express.Application;
   let server: Server;
+  let closeServer: () => Promise<void>;
   
   beforeAll(async () => {
     // Setup test app with all routes
-    app = await setupAppForTesting();
-    server = app.listen(0); // random port
+    const setup = await setupAppForTesting();
+    app = setup.app;
+    server = setup.server;
+    closeServer = setup.closeServer;
   });
   
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => {
-        server.close(() => {
-          resolve();
-        });
-      });
+    if (closeServer) {
+      await closeServer();
     }
     
     // Close mongoose connection

@@ -612,8 +612,36 @@ export class AchievementService {
   }
 
   static async getUserAchievements(userId: mongoose.Types.ObjectId): Promise<AchievementDefinition[]> {
-    const unlockedIds = await this.getUnlockedAchievements(userId);
-    return MEDITATION_ACHIEVEMENTS.filter(a => unlockedIds.includes(a.id));
+    try {
+      // Get all achievements earned by the user
+      const userAchievements = await Achievement.find({ userId }).populate('achievementId');
+      
+      // Map to array of achievement definitions with earned status
+      const achievementDefs = await AchievementDefinition.find();
+      
+      return achievementDefs.map(def => {
+        const earned = userAchievements.some(ua => 
+          ua.achievementId && 
+          ua.achievementId._id && 
+          ua.achievementId._id.toString() === def._id.toString()
+        );
+        
+        return {
+          ...def.toObject(),
+          earned,
+          dateEarned: earned 
+            ? userAchievements.find(ua => 
+                ua.achievementId && 
+                ua.achievementId._id && 
+                ua.achievementId._id.toString() === def._id.toString()
+              )?.createdAt 
+            : null
+        };
+      });
+    } catch (error) {
+      console.error('Error getting user achievements:', error);
+      throw error;
+    }
   }
 
   static async getAvailableAchievements(): Promise<AchievementDefinition[]> {
@@ -659,5 +687,77 @@ export class AchievementService {
     rank: number;
   }[]> {
     return LeaderboardService.getTopAchievers(limit);
+  }
+
+  /**
+   * Get achievement statistics for a user
+   * @param userId The user's ID
+   * @returns Achievement statistics
+   */
+  static async getAchievementStats(userId: string): Promise<any> {
+    try {
+      const achievements = await Achievement.find({
+        userId: new mongoose.Types.ObjectId(userId)
+      }).lean();
+      
+      if (achievements.length === 0) {
+        return {
+          totalAchievements: 0,
+          totalPoints: 0,
+          categoryCounts: {},
+          recentAchievements: []
+        };
+      }
+      
+      // Calculate total points
+      const totalPoints = achievements.reduce((sum, achievement) => sum + (achievement.points || 0), 0);
+      
+      // Count achievements by category
+      const categoryCounts: Record<string, number> = {};
+      achievements.forEach(achievement => {
+        const category = achievement.category || 'uncategorized';
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      });
+      
+      // Get 5 most recent achievements
+      const recentAchievements = achievements
+        .sort((a, b) => new Date(b.dateEarned).getTime() - new Date(a.dateEarned).getTime())
+        .slice(0, 5);
+      
+      return {
+        totalAchievements: achievements.length,
+        totalPoints,
+        categoryCounts,
+        recentAchievements
+      };
+    } catch (error) {
+      console.error('Error calculating achievement stats:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Award a new achievement to a user
+   * @param userId The user's ID
+   * @param achievementData Achievement data
+   * @returns Created achievement
+   */
+  static async awardAchievement(userId: string, achievementData: any): Promise<any> {
+    try {
+      const achievement = await Achievement.create({
+        userId: new mongoose.Types.ObjectId(userId),
+        name: achievementData.name,
+        description: achievementData.description,
+        category: achievementData.category,
+        points: achievementData.points || 10,
+        dateEarned: new Date(),
+        icon: achievementData.icon || 'trophy'
+      });
+      
+      return achievement;
+    } catch (error) {
+      console.error('Error awarding achievement:', error);
+      throw error;
+    }
   }
 }

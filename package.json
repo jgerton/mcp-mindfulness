@@ -8,7 +8,11 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "test": "jest --detectOpenHandles --forceExit --setupFilesAfterEnv ./src/__tests__/setup.ts",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "test:mobile-network": "jest --config=jest.config.js src/__tests__/mobile-integration/network-resilience.test.ts",
+    "test:mobile-performance": "jest --config=jest.config.js src/__tests__/mobile-integration/api-performance.test.ts",
+    "test:mobile-battery": "node scripts/battery-impact-test.js",
+    "test:mobile": "npm run test:mobile-network && npm run test:mobile-performance && npm run test:mobile-battery"
   },
   "keywords": [
     "mindfulness",
@@ -31,6 +35,8 @@
     "@types/socket.io": "^3.0.2",
     "@types/socket.io-client": "^3.0.0",
     "@types/supertest": "^6.0.2",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -50,10 +56,13 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.9",
     "bcryptjs": "^3.0.2",
+    "csv-writer": "^1.6.0",
     "json2csv": "6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "node-cache": "^5.1.2",
     "socket.io": "^4.8.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
     "zod": "^3.24.2"
   }
 }
