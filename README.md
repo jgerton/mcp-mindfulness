@@ -17,6 +17,7 @@ The MCP Stress Management and Mindfulness Practices Platform is a comprehensive 
 - **Adaptive Programs**: Personalized stress management strategies based on your lifestyle
 - **Progress Monitoring**: Track your stress levels and management effectiveness
 - **Emergency Tools**: Instant access to calming techniques during high-stress moments
+- **Stress Techniques Library**: Comprehensive collection of evidence-based stress management techniques
 
 ### Mindfulness Practices
 - **Guided Meditations**: Structured sessions for all experience levels
@@ -33,6 +34,8 @@ The MCP Stress Management and Mindfulness Practices Platform is a comprehensive 
 - **Personalized Experience**: Adaptive content based on your stress patterns and mindfulness progress
 - **Community Engagement**: Connect with fellow practitioners and share experiences
 - **Cross-Platform Access**: Consistent experience across all your devices
+- **Stress Technique Recommendations**: AI-powered suggestions based on stress level and available time
+- **Data Export**: Flexible export options for your wellness data in multiple formats
 
 ## 🛠️ Tech Stack
 
@@ -41,6 +44,7 @@ The MCP Stress Management and Mindfulness Practices Platform is a comprehensive 
 - **Database**: MongoDB
 - **AI Integration**: Claude 3 Sonnet
 - **Deployment**: Vercel, Docker
+- **API Documentation**: Swagger/OpenAPI
 
 ## 📚 Project Documentation
 
@@ -111,6 +115,46 @@ Each document begins with an introduction explaining core concepts and includes 
    - Quality assurance
    - *Balanced feature development flow*
 
+## 📘 Feature Documentation
+
+### New Features (Sprint Four)
+
+1. **[Stress Management Techniques](project-planning/guides/stress-technique-guide.md)**
+   - Comprehensive library of evidence-based stress reduction techniques
+   - Intelligent recommendation engine based on stress level and available time
+   - Categorized techniques (breathing, physical, mental, social, lifestyle)
+   - Detailed step-by-step instructions for each technique
+   - Effectiveness ratings for different stress levels
+   - Mobile-optimized API endpoints for on-the-go access
+
+2. **[Data Export API](project-planning/guides/data-export-guide.md)**
+   - Export personal wellness data in multiple formats (JSON, CSV)
+   - Selective data export by category (meditation, stress, achievements)
+   - Date range filtering for targeted exports
+   - Privacy-focused design with secure authentication
+   - Optimized for mobile with reduced payload sizes
+   - Network-resilient implementation for reliable exports
+
+### API Documentation
+
+Our API is fully documented using Swagger/OpenAPI. Access the interactive documentation at:
+
+```
+/api-docs
+```
+
+For detailed information about API documentation, see our [Swagger Documentation Guide](project-planning/guides/swagger-documentation-guide.md).
+
+### Mobile Integration
+
+The platform is optimized for mobile devices with special attention to:
+- Network resilience for intermittent connections
+- Battery impact optimization
+- Data usage efficiency
+- Responsive API design
+
+For detailed mobile integration guidelines, see our [Mobile Integration Guide](project-planning/guides/mobile-integration-guide.md).
+
 ## 🚀 Getting Started
 
 1. **Clone the repository**
@@ -161,11 +205,39 @@ The test setup has been improved to properly handle database connections and ser
    - Added `detectOpenHandles` to identify resource leaks
    - Set `maxWorkers: 1` to run tests sequentially and avoid connection conflicts
 
-4. **Index Management**:
-   - Fixed duplicate index warnings by ensuring indexes are properly defined
-   - Added clear comments to explain index patterns
+4. **Error Handling**:
+   - Implemented standardized error handling with structured error responses
+   - Created compatibility utilities to support test migration
+   - Added comprehensive error code and category system
+   - Provided migration guide for updating tests to use the new error format
+   - See [Testing Standards](project-planning/standards/testing-standards.md#error-handling-in-tests) for more details
 
-These improvements help ensure tests run reliably and resources are properly cleaned up between tests.
+## MongoDB Testing Best Practices
+
+Based on our experience resolving test timeout issues, we've established comprehensive best practices for MongoDB testing:
+
+1. **Direct Controller Testing**:
+   - Test controllers directly instead of through HTTP routes
+   - Mock Express Request and Response objects
+   - Eliminate network overhead and connection issues
+   - See our [MongoDB Test Template](project-planning/guides/mongodb-test-template.md) for implementation
+
+2. **Connection Management**:
+   - Use a single connection per test suite with proper cleanup
+   - Add explicit connection state logging for troubleshooting
+   - Implement safeguards against race conditions
+
+3. **Middleware Mocking**:
+   - Mock authentication middleware to bypass token validation
+   - Create streamlined request flow for controller testing
+   - Ensure consistent test user identity
+
+4. **Performance Optimization**:
+   - Use shorter timeouts (5-10s) for faster feedback
+   - Create reusable test data generators
+   - Reset database state between tests
+
+For detailed guidelines, see our [MongoDB Connection Guide](project-planning/guides/mongodb-connection-guide.md) and [Testing Standards](project-planning/standards/testing-standards.md#mongodb-connection-management-for-tests).
 
 ## 🔧 Development
 
@@ -240,6 +312,45 @@ throw new AppError(
 6. **Retryable Indication**: Indicate if an operation can be retried successfully.
 
 See `src/middleware/error-handler.middleware.ts` for implementation details.
+
+### Export Functionality
+
+The platform provides robust data export capabilities for users to download their data in multiple formats:
+
+#### Supported Export Formats
+
+- **JSON**: Structured data format ideal for programmatic access
+- **CSV**: Tabular format compatible with spreadsheet applications
+
+#### Exportable Data Types
+
+- **User Data**: Basic profile information and settings
+- **Achievements**: All user achievements with progress statistics
+- **Meditations**: Complete meditation history with session details
+- **Stress Assessments**: Historical stress level measurements
+
+#### Export Security Features
+
+- ObjectId validation for all requested resources
+- Field-level permissions to protect sensitive data
+- Export rate limiting to prevent abuse
+- Data sanitization for privacy protection
+
+#### Usage Example
+
+```typescript
+// Export user data in CSV format
+const exportOptions = { 
+  format: 'csv',
+  dateRange: { 
+    startDate: '2023-01-01', 
+    endDate: '2023-12-31' 
+  }
+};
+const userData = await exportService.getUserData(userId, exportOptions);
+```
+
+All export operations support date range filtering with both `startDate` and `endDate` parameters.
 
 ---
 

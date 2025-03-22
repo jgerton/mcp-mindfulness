@@ -1,4 +1,4 @@
-import { StressLevel, StressAssessment, StressReduction, TechniqueType } from '../models/stress.model';
+import { StressLevel, StressAssessmentLegacy, StressReduction, TechniqueType } from '../models/stress.model';
 import { UserService, UserPreferences } from './user.service';
 import mongoose from 'mongoose';
 
