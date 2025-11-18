@@ -1,12 +1,12 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IJournal extends Document {
-  userId: string;
+  userId: Types.ObjectId;
   title: string;
   content: string;
   mood: 'very-negative' | 'negative' | 'neutral' | 'positive' | 'very-positive';
   tags: string[];
-  meditationId?: string; // optional reference to a meditation session
+  meditationId?: Types.ObjectId; // optional reference to a meditation session
   isPrivate: boolean;
   createdAt: Date;
   updatedAt: Date;

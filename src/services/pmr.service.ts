@@ -1,5 +1,6 @@
 import { MuscleGroup, PMRSession } from '../models/pmr.model';
 import { StressManagementService } from './stress-management.service';
+import { StressLevel } from '../types/stress.types';
 
 export class PMRService {
   private static readonly DEFAULT_MUSCLE_GROUPS = [
@@ -93,13 +94,19 @@ export class PMRService {
     if (session.stressLevelBefore !== undefined && stressLevelAfter !== undefined) {
       await StressManagementService.recordStressChange(
         session.userId,
-        session.stressLevelBefore.toString(),
-        stressLevelAfter.toString(),
+        this.mapNumberToStressLevel(session.stressLevelBefore),
+        this.mapNumberToStressLevel(stressLevelAfter),
         'PMR_EXERCISE'
       );
     }
 
     return session;
+  }
+
+  private static mapNumberToStressLevel(level: number): StressLevel {
+    if (level <= 3) return StressLevel.LOW;
+    if (level <= 7) return StressLevel.MODERATE;
+    return StressLevel.HIGH;
   }
 
   static async getMuscleGroups(): Promise<MuscleGroup[]> {

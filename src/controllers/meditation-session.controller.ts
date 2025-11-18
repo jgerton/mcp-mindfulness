@@ -215,7 +215,11 @@ export class MeditationSessionController {
       if (description !== undefined) session.description = description;
       if (duration) session.duration = duration;
       if (tags) session.tags = tags;
-      if (mood) session.mood = mood;
+      if (mood) {
+        // Handle mood correctly based on the base wellness session model
+        if (mood.before) session.moodBefore = mood.before;
+        if (mood.after) session.moodAfter = mood.after;
+      }
       if (notes !== undefined) session.notes = notes;
 
       await session.save();
@@ -269,8 +273,8 @@ export class MeditationSessionController {
 
       // Update mood after if provided
       if (mood) {
-        if (!session.mood) session.mood = {};
-        session.mood.after = mood;
+        // Set moodAfter property directly
+        session.moodAfter = mood;
       }
 
       // Complete the session

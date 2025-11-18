@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { app, httpServer } from './app';
+import { app, httpServer, closeServer } from './app';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -14,9 +14,6 @@ import meditationSessionRoutes from './routes/meditation-session.routes';
 
 // Load environment variables
 dotenv.config();
-
-// Create Express app
-const app = express();
 
 // Configure rate limiting
 const limiter = rateLimit({
@@ -46,11 +43,10 @@ app.get('/', (req, res) => {
 const mongooseOptions = {
   // These options help with MongoDB Atlas connection
   retryWrites: true,
-  w: 'majority',
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-};
+} as mongoose.ConnectOptions;
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mindfulness', mongooseOptions)
@@ -77,9 +73,26 @@ mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected');
 });
 
+// Properly handle application shutdown
 process.on('SIGINT', async () => {
-  await mongoose.connection.close();
-  process.exit(0);
+  try {
+    console.log('Closing MongoDB connection...');
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed');
+    
+    console.log('Closing HTTP server...');
+    closeServer();
+    console.log('HTTP server closed');
+    
+    // Force exit after 5 seconds if server doesn't close gracefully
+    setTimeout(() => {
+      console.log('Forcing process exit after timeout');
+      process.exit(1);
+    }, 5000);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
 });
 
 // Error handling middleware

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Achievement, IAchievementDocument } from '../models/achievement.model';
+import { Achievement, IAchievementDocument, UserAchievement } from '../models/achievement.model';
 import { IMeditationSession } from '../models/meditation-session.model';
 import { IGroupSession } from '../models/group-session.model';
 import { Friend } from '../models/friend.model';
@@ -611,30 +611,30 @@ export class AchievementService {
     LeaderboardService.invalidateUserCache(userId);
   }
 
-  static async getUserAchievements(userId: mongoose.Types.ObjectId): Promise<AchievementDefinition[]> {
+  static async getUserAchievements(userId: mongoose.Types.ObjectId) {
     try {
       // Get all achievements earned by the user
-      const userAchievements = await Achievement.find({ userId }).populate('achievementId');
+      const userAchievements = await UserAchievement.find({ userId }).populate('achievementId');
       
-      // Map to array of achievement definitions with earned status
-      const achievementDefs = await AchievementDefinition.find();
+      // Get all achievement definitions
+      const achievementDefs = await Achievement.find();
       
       return achievementDefs.map(def => {
-        const earned = userAchievements.some(ua => 
+        const earned = userAchievements.some((ua: any) => 
           ua.achievementId && 
           ua.achievementId._id && 
-          ua.achievementId._id.toString() === def._id.toString()
+          ua.achievementId._id.toString() === (def._id as mongoose.Types.ObjectId).toString()
         );
         
         return {
           ...def.toObject(),
           earned,
           dateEarned: earned 
-            ? userAchievements.find(ua => 
+            ? userAchievements.find((ua: any) => 
                 ua.achievementId && 
                 ua.achievementId._id && 
-                ua.achievementId._id.toString() === def._id.toString()
-              )?.createdAt 
+                ua.achievementId._id.toString() === (def._id as mongoose.Types.ObjectId).toString()
+              )?.dateEarned || null
             : null
         };
       });
@@ -694,7 +694,7 @@ export class AchievementService {
    * @param userId The user's ID
    * @returns Achievement statistics
    */
-  static async getAchievementStats(userId: string): Promise<any> {
+  static async getAchievementStats(userId: string) {
     try {
       const achievements = await Achievement.find({
         userId: new mongoose.Types.ObjectId(userId)
@@ -721,7 +721,8 @@ export class AchievementService {
       
       // Get 5 most recent achievements
       const recentAchievements = achievements
-        .sort((a, b) => new Date(b.dateEarned).getTime() - new Date(a.dateEarned).getTime())
+        .filter(a => a.completedAt) // Only include achievements with a completedAt date
+        .sort((a, b) => (b.completedAt ? b.completedAt.getTime() : 0) - (a.completedAt ? a.completedAt.getTime() : 0))
         .slice(0, 5);
       
       return {

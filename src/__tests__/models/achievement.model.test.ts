@@ -1,276 +1,238 @@
 import mongoose from 'mongoose';
-import { Achievement, UserAchievement, IAchievement, IUserAchievement } from '../../models/achievement.model';
-import { connect, closeDatabase, clearDatabase } from '../utils/test-db';
+import { 
+  Achievement, 
+  UserAchievement, 
+  IAchievement, 
+  IUserAchievement,
+  AchievementCategory,
+  AchievementType
+} from '../../models/achievement.model';
+import { connectToTestDB, disconnectFromTestDB, clearDatabase } from '../test-utils/db-handler';
+import { AchievementTestFactory, UserAchievementTestFactory } from '../factories/achievement.factory';
 
-beforeAll(async () => {
-  await connect();
-});
+describe('Achievement Models', () => {
+  let achievementFactory: AchievementTestFactory;
+  let userAchievementFactory: UserAchievementTestFactory;
 
-afterAll(async () => {
-  await closeDatabase();
-});
-
-beforeEach(async () => {
-  await clearDatabase();
-});
-
-describe('Achievement Model', () => {
-  const validAchievementData = {
-    name: 'Meditation Master',
-    description: 'Complete 10 meditation sessions',
-    category: 'milestone',
-    criteria: {
-      type: 'sessionCount',
-      value: 10
-    },
-    icon: 'meditation-icon.png',
-    points: 100
-  };
-
-  describe('Schema Validation', () => {
-    it('should create a valid achievement', async () => {
-      const achievement = new Achievement(validAchievementData);
-      const savedAchievement = await achievement.save();
-      
-      expect(savedAchievement._id).toBeDefined();
-      expect(savedAchievement.name).toBe(validAchievementData.name);
-      expect(savedAchievement.description).toBe(validAchievementData.description);
-      expect(savedAchievement.category).toBe(validAchievementData.category);
-      expect(savedAchievement.criteria.type).toBe(validAchievementData.criteria.type);
-      expect(savedAchievement.criteria.value).toBe(validAchievementData.criteria.value);
-      expect(savedAchievement.icon).toBe(validAchievementData.icon);
-      expect(savedAchievement.points).toBe(validAchievementData.points);
-      expect(savedAchievement.createdAt).toBeDefined();
-      expect(savedAchievement.updatedAt).toBeDefined();
-    });
-
-    it('should fail validation when required fields are missing', async () => {
-      const achievement = new Achievement({});
-      
-      let error: any;
-      try {
-        await achievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.name).toBeDefined();
-      expect(error.errors.description).toBeDefined();
-      expect(error.errors.category).toBeDefined();
-      expect(error.errors['criteria.type']).toBeDefined();
-      expect(error.errors['criteria.value']).toBeDefined();
-      expect(error.errors.icon).toBeDefined();
-      expect(error.errors.points).toBeDefined();
-    });
-
-    it('should fail validation when category is invalid', async () => {
-      const achievement = new Achievement({
-        ...validAchievementData,
-        category: 'invalid-category'
-      });
-      
-      let error: any;
-      try {
-        await achievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.category).toBeDefined();
-      expect(error.errors.category.message).toContain('Achievement category must be one of');
-    });
-
-    it('should fail validation when points are negative', async () => {
-      const achievement = new Achievement({
-        ...validAchievementData,
-        points: -10
-      });
-      
-      let error: any;
-      try {
-        await achievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.points).toBeDefined();
-      expect(error.errors.points.message).toBe('Achievement points cannot be negative');
-    });
-
-    it('should fail validation when name exceeds maximum length', async () => {
-      const achievement = new Achievement({
-        ...validAchievementData,
-        name: 'A'.repeat(101)
-      });
-      
-      let error: any;
-      try {
-        await achievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.name).toBeDefined();
-      expect(error.errors.name.message).toBe('Achievement name cannot be more than 100 characters');
-    });
-
-    it('should fail validation when description exceeds maximum length', async () => {
-      const achievement = new Achievement({
-        ...validAchievementData,
-        description: 'A'.repeat(501)
-      });
-      
-      let error: any;
-      try {
-        await achievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.description).toBeDefined();
-      expect(error.errors.description.message).toBe('Achievement description cannot be more than 500 characters');
-    });
+  beforeAll(async () => {
+    await connectToTestDB();
+    achievementFactory = new AchievementTestFactory();
+    userAchievementFactory = new UserAchievementTestFactory();
   });
-});
 
-describe('UserAchievement Model', () => {
-  let testAchievement: IAchievement;
-  const userId = new mongoose.Types.ObjectId();
+  afterAll(async () => {
+    await disconnectFromTestDB();
+  });
 
   beforeEach(async () => {
-    testAchievement = await new Achievement({
-      name: 'Meditation Master',
-      description: 'Complete 10 meditation sessions',
-      category: 'milestone',
-      criteria: {
-        type: 'sessionCount',
-        value: 10
-      },
-      icon: 'meditation-icon.png',
-      points: 100
-    }).save();
+    await clearDatabase();
   });
 
-  const validUserAchievementData = () => ({
-    userId,
-    achievementId: testAchievement._id,
-    progress: 50,
-    isCompleted: false
+  describe('Achievement Model', () => {
+    describe('Schema Validation', () => {
+      it('should create a valid achievement', async () => {
+        const achievement = achievementFactory.create();
+        const savedAchievement = await Achievement.create(achievement);
+        expect(savedAchievement._id).toBeDefined();
+        expect(savedAchievement.name).toBe(achievement.name);
+        expect(savedAchievement.category).toBe(achievement.category);
+      });
+
+      it('should require name', async () => {
+        const achievement = achievementFactory.create({ name: undefined });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should require description', async () => {
+        const achievement = achievementFactory.create({ description: undefined });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should require category', async () => {
+        const achievement = achievementFactory.create({ category: undefined });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should validate category enum values', async () => {
+        const achievement = achievementFactory.create({ category: 'invalid' as any });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should require criteria', async () => {
+        const achievement = achievementFactory.create({ criteria: undefined });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should require icon', async () => {
+        const achievement = achievementFactory.create({ icon: undefined });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should require points', async () => {
+        const achievement = achievementFactory.create({ points: undefined });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should validate points minimum value', async () => {
+        const achievement = achievementFactory.create({ points: -1 });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should validate name length', async () => {
+        const achievement = achievementFactory.create({ name: 'a'.repeat(101) });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+
+      it('should validate description length', async () => {
+        const achievement = achievementFactory.create({ description: 'a'.repeat(501) });
+        await expect(Achievement.create(achievement)).rejects.toThrow();
+      });
+    });
+
+    describe('Achievement Types', () => {
+      it('should create meditation achievement', async () => {
+        const achievement = await Achievement.create(achievementFactory.meditation());
+        expect(achievement.category).toBe(AchievementCategory.MEDITATION);
+        expect(achievement.type).toBe(AchievementType.DURATION);
+      });
+
+      it('should create streak achievement', async () => {
+        const achievement = await Achievement.create(achievementFactory.streak());
+        expect(achievement.category).toBe(AchievementCategory.CONSISTENCY);
+        expect(achievement.type).toBe(AchievementType.STREAK);
+      });
+    });
+
+    describe('Progress Tracking', () => {
+      it('should track progress correctly', async () => {
+        const achievement = await Achievement.create(achievementFactory.inProgress(50));
+        expect(achievement.progress).toBe(50);
+        expect(achievement.completed).toBe(false);
+      });
+
+      it('should mark as completed when progress reaches target', async () => {
+        const achievement = await Achievement.create(achievementFactory.completed());
+        expect(achievement.completed).toBe(true);
+        expect(achievement.completedAt).toBeDefined();
+      });
+    });
+
+    describe('Indexes', () => {
+      it('should have type index', async () => {
+        const indexes = await Achievement.collection.getIndexes();
+        const hasTypeIndex = Object.values(indexes).some(
+          (index: any) => index.key.type === 1
+        );
+        expect(hasTypeIndex).toBe(true);
+      });
+
+      it('should have userId index', async () => {
+        const indexes = await Achievement.collection.getIndexes();
+        const hasUserIdIndex = Object.values(indexes).some(
+          (index: any) => index.key.userId === 1
+        );
+        expect(hasUserIdIndex).toBe(true);
+      });
+    });
   });
 
-  describe('Schema Validation', () => {
-    it('should create a valid user achievement', async () => {
-      const data = validUserAchievementData();
-      const userAchievement = new UserAchievement(data);
-      const savedUserAchievement = await userAchievement.save();
-      
-      expect(savedUserAchievement._id).toBeDefined();
-      expect(savedUserAchievement.userId.toString()).toBe(data.userId.toString());
-      expect(savedUserAchievement.achievementId.toString()).toBe((data.achievementId as mongoose.Types.ObjectId).toString());
-      expect(savedUserAchievement.progress).toBe(data.progress);
-      expect(savedUserAchievement.isCompleted).toBe(data.isCompleted);
-      expect(savedUserAchievement.dateEarned).toBeNull();
-      expect(savedUserAchievement.createdAt).toBeDefined();
-      expect(savedUserAchievement.updatedAt).toBeDefined();
-    });
-
-    it('should set default values correctly', async () => {
-      const userAchievement = new UserAchievement({
-        userId,
-        achievementId: testAchievement._id,
-        progress: 50
+  describe('UserAchievement Model', () => {
+    describe('Schema Validation', () => {
+      it('should create a valid user achievement', async () => {
+        const userAchievement = userAchievementFactory.create();
+        const savedUserAchievement = await UserAchievement.create(userAchievement);
+        expect(savedUserAchievement._id).toBeDefined();
+        expect(savedUserAchievement.userId).toEqual(userAchievement.userId);
+        expect(savedUserAchievement.achievementId).toEqual(userAchievement.achievementId);
       });
-      const savedUserAchievement = await userAchievement.save();
-      
-      expect(savedUserAchievement.isCompleted).toBe(false);
-      expect(savedUserAchievement.dateEarned).toBeNull();
-    });
 
-    it('should fail validation when required fields are missing', async () => {
-      const userAchievement = new UserAchievement({});
-      
-      let error: any;
-      try {
-        await userAchievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.userId).toBeDefined();
-      expect(error.errors.achievementId).toBeDefined();
-      expect(error.errors.progress).toBeDefined();
-    });
-
-    it('should fail validation when progress is negative', async () => {
-      const userAchievement = new UserAchievement({
-        ...validUserAchievementData(),
-        progress: -10
+      it('should require userId', async () => {
+        const userAchievement = userAchievementFactory.create({ userId: undefined });
+        await expect(UserAchievement.create(userAchievement)).rejects.toThrow();
       });
-      
-      let error: any;
-      try {
-        await userAchievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.progress).toBeDefined();
-      expect(error.errors.progress.message).toBe('Achievement progress cannot be negative');
-    });
 
-    it('should fail validation when progress exceeds 100', async () => {
-      const userAchievement = new UserAchievement({
-        ...validUserAchievementData(),
-        progress: 110
+      it('should require achievementId', async () => {
+        const userAchievement = userAchievementFactory.create({ achievementId: undefined });
+        await expect(UserAchievement.create(userAchievement)).rejects.toThrow();
       });
-      
-      let error: any;
-      try {
-        await userAchievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.errors.progress).toBeDefined();
-      expect(error.errors.progress.message).toBe('Achievement progress cannot exceed 100');
+
+      it('should require progress', async () => {
+        const userAchievement = userAchievementFactory.create({ progress: undefined });
+        await expect(UserAchievement.create(userAchievement)).rejects.toThrow();
+      });
+
+      it('should validate progress range', async () => {
+        const userAchievement = userAchievementFactory.create({ progress: 101 });
+        await expect(UserAchievement.create(userAchievement)).rejects.toThrow();
+      });
     });
 
-    it('should enforce unique constraint on userId and achievementId', async () => {
-      // Create first user achievement
-      await new UserAchievement(validUserAchievementData()).save();
-      
-      // Try to create another with the same userId and achievementId
-      const duplicateUserAchievement = new UserAchievement(validUserAchievementData());
-      
-      let error: any;
-      try {
-        await duplicateUserAchievement.save();
-      } catch (err) {
-        error = err;
-      }
-      
-      expect(error).toBeDefined();
-      expect(error.code).toBe(11000); // MongoDB duplicate key error code
+    describe('Progress Tracking', () => {
+      it('should track progress correctly', async () => {
+        const userAchievement = await UserAchievement.create(userAchievementFactory.inProgress(75));
+        expect(userAchievement.progress).toBe(75);
+        expect(userAchievement.isCompleted).toBe(false);
+      });
+
+      it('should mark as completed with earned date', async () => {
+        const userAchievement = await UserAchievement.create(userAchievementFactory.completed());
+        expect(userAchievement.isCompleted).toBe(true);
+        expect(userAchievement.dateEarned).toBeDefined();
+      });
     });
 
-    it('should update dateEarned when isCompleted is set to true', async () => {
-      const userAchievement = await new UserAchievement({
-        ...validUserAchievementData(),
-        isCompleted: true,
-        dateEarned: new Date()
-      }).save();
-      
-      expect(userAchievement.isCompleted).toBe(true);
-      expect(userAchievement.dateEarned).toBeDefined();
-      expect(userAchievement.dateEarned).not.toBeNull();
+    describe('User Association', () => {
+      it('should associate with user', async () => {
+        const userId = new mongoose.Types.ObjectId();
+        const userAchievement = await UserAchievement.create(userAchievementFactory.forUser(userId));
+        expect(userAchievement.userId).toEqual(userId);
+      });
+
+      it('should associate with achievement', async () => {
+        const achievementId = new mongoose.Types.ObjectId();
+        const userAchievement = await UserAchievement.create(
+          userAchievementFactory.forAchievement(achievementId)
+        );
+        expect(userAchievement.achievementId).toEqual(achievementId);
+      });
+    });
+
+    describe('Indexes', () => {
+      it('should have unique compound index on userId and achievementId', async () => {
+        const indexes = await UserAchievement.collection.getIndexes();
+        const hasUniqueIndex = Object.values(indexes).some(
+          (index: any) => 
+            index.key.userId === 1 && 
+            index.key.achievementId === 1 && 
+            index.unique === true
+        );
+        expect(hasUniqueIndex).toBe(true);
+      });
+
+      it('should have index on userId and isCompleted', async () => {
+        const indexes = await UserAchievement.collection.getIndexes();
+        const hasCompletedIndex = Object.values(indexes).some(
+          (index: any) => 
+            index.key.userId === 1 && 
+            index.key.isCompleted === 1
+        );
+        expect(hasCompletedIndex).toBe(true);
+      });
+
+      it('should prevent duplicate user achievements', async () => {
+        const userId = new mongoose.Types.ObjectId();
+        const achievementId = new mongoose.Types.ObjectId();
+        
+        await UserAchievement.create(userAchievementFactory.create({
+          userId,
+          achievementId
+        }));
+
+        await expect(UserAchievement.create(userAchievementFactory.create({
+          userId,
+          achievementId
+        }))).rejects.toThrow();
+      });
     });
   });
-}); 
+});

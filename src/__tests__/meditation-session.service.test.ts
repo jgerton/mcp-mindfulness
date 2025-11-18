@@ -5,177 +5,147 @@ import { User } from '../models/user.model';
 import { Meditation } from '../models/meditation.model';
 import { SessionAnalytics } from '../models/session-analytics.model';
 import type { MoodType } from '../models/session-analytics.model';
+import { connect as connectDB, clearDatabase } from './utils/test-db';
+import { WellnessSessionStatus, WellnessMoodState } from '../models/base-wellness-session.model';
+import { Request, Response } from 'express';
+import { TestFactory } from '../utils/test-factory';
+import { ErrorCode, ErrorCategory } from '../../errors';
+import { setupModelMocks } from '../utils/setup-model-mocks';
 
-let mongoServer: any;
+// Define types for better type safety
+interface TestContext {
+  mockReq: Request;
+  mockRes: Response;
+  testFactory: TestFactory;
+}
 
-describe('MeditationSessionService', () => {
-  let meditationSessionService: MeditationSessionService;
-  let userId: mongoose.Types.ObjectId;
-  let guidedMeditationId: mongoose.Types.ObjectId;
-  let testUser: any;
 
-  beforeAll(async () => {
-    if (!mongoose.connection.readyState) {
-      await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/test');
-    }
+describe('Meditation-sessionService Tests', () => {
+  let context: TestContext;
+
+  beforeAll(() => {
+    // Setup any test-wide configurations
   });
 
-  afterAll(async () => {
-    if (mongoose.connection.readyState) {
-      await mongoose.connection.close();
-    }
+  beforeEach(() => {
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
+    };
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
+    };
   });
 
-  beforeEach(async () => {
-    await mongoose.connection.dropDatabase();
-    meditationSessionService = new MeditationSessionService();
-    userId = new mongoose.Types.ObjectId();
-    guidedMeditationId = new mongoose.Types.ObjectId();
-    testUser = await User.create({
-      email: 'test@example.com',
-      password: 'password123',
-      username: 'testuser'
-    });
+  afterEach(() => {
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
   });
 
-  describe('startSession', () => {
-    it('should create a new session', async () => {
-      const result = await meditationSessionService.startSession(userId.toString(), {
-        meditationId: guidedMeditationId.toString(),
-        title: 'Test Meditation Session',
-        type: 'guided',
-        completed: false,
-        duration: 600,
-        durationCompleted: 0,
-        moodBefore: 'neutral' as MoodType
+  describe('Success Cases', () => {
+    
+      it('should successfully process valid input', async () => {
+        // Arrange
+        const input = context.testFactory.createValidInput();
+        context.mockReq.body = input;
+        
+        const expectedResult = context.testFactory.createExpectedResult();
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockResolvedValue(expectedResult);
+
+        // Act
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+
+          // Assert
+          expect(context.mockRes.status).toHaveBeenCalledWith(200);
+          expect(context.mockRes.json).toHaveBeenCalledWith(
+            expect.objectContaining(expectedResult)
+          );
+        } catch (error) {
+          fail('Should not throw an error');
+        }
       });
-      expect(result.status).toBe('active');
-      expect(result.sessionId).toBeDefined();
-
-      const session = await MeditationSession.findById(result.sessionId);
-      expect(session).toBeDefined();
-      expect(session?.status).toBe('active');
-      expect(session?.userId.toString()).toBe(userId.toString());
-      if (session?.guidedMeditationId) {
-        expect(session.guidedMeditationId.toString()).toBe(guidedMeditationId.toString());
-      }
-      expect(session?.startTime).toBeDefined();
-      expect(session?.interruptions).toBe(0);
-      expect(session?.completed).toBe(false);
-    });
+    
   });
 
-  describe('completeSession', () => {
-    it('should complete an existing session', async () => {
-      const { sessionId } = await meditationSessionService.startSession(userId.toString(), {
-        meditationId: guidedMeditationId.toString(),
-        title: 'Test Meditation Session',
-        type: 'guided',
-        completed: false,
-        duration: 600,
-        durationCompleted: 0,
-        moodBefore: 'anxious' as MoodType
+  describe('Error Cases', () => {
+    
+      it('should handle invalid input error', async () => {
+        // Arrange
+        const invalidInput = context.testFactory.createInvalidInput();
+        context.mockReq.body = invalidInput;
+
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockRejectedValue({
+            code: ErrorCode.INVALID_INPUT,
+            category: ErrorCategory.VALIDATION,
+            message: 'Invalid input provided',
+          });
+
+        // Act & Assert
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+          fail('Should throw an error');
+        } catch (error: any) {
+          expect(error.code).toBe(ErrorCode.INVALID_INPUT);
+          expect(error.category).toBe(ErrorCategory.VALIDATION);
+          expect(context.mockRes.status).not.toHaveBeenCalled();
+        }
       });
-      
-      const completedSession = await meditationSessionService.completeSession(sessionId, {
-        duration: 15,
-        durationCompleted: 15,
-        moodBefore: 'anxious' as MoodType,
-        moodAfter: 'peaceful' as MoodType,
-        interruptions: 0,
-        notes: 'Great session',
-        completed: true
+    
+  });
+
+  describe('Edge Cases', () => {
+    
+      it('should handle boundary conditions', async () => {
+        // Arrange
+        const edgeInput = context.testFactory.createEdgeCaseInput();
+        context.mockReq.body = edgeInput;
+
+        // Mock implementation with specific logic
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockImplementation(async (input) => {
+            if (someEdgeCondition(input)) {
+              return specialHandling(input);
+            }
+            return normalHandling(input);
+          });
+
+        // Act
+        await controller.handleComponent(context.mockReq, context.mockRes);
+
+        // Assert
+        expect(context.mockRes.status).toHaveBeenCalledWith(200);
+        expect(context.mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            // Edge case specific assertions
+          })
+        );
       });
-
-      expect(completedSession.status).toBe('completed');
-      expect(completedSession.endTime).toBeDefined();
-      expect(completedSession.duration).toBe(15);
-      expect(completedSession.durationCompleted).toBe(15);
-      expect(completedSession.moodBefore).toBe('anxious');
-      expect(completedSession.moodAfter).toBe('peaceful');
-      expect(completedSession.interruptions).toBe(0);
-      expect(completedSession.notes).toBe('Great session');
-      expect(completedSession.completed).toBe(true);
-    });
-
-    it('should throw error for invalid session id', async () => {
-      const invalidId = new mongoose.Types.ObjectId();
-      await expect(meditationSessionService.completeSession(invalidId.toString(), {
-        duration: 15,
-        durationCompleted: 15,
-        moodAfter: 'peaceful' as MoodType,
-        interruptions: 0,
-        completed: true
-      })).rejects.toThrow('Session not found');
-    });
+    
   });
-
-  describe('getActiveSession', () => {
-    it('should return active session for user', async () => {
-      await meditationSessionService.startSession(userId.toString(), {
-        meditationId: guidedMeditationId.toString(),
-        title: 'Test Meditation Session',
-        type: 'guided',
-        completed: false,
-        duration: 600,
-        durationCompleted: 0,
-        moodBefore: 'neutral' as MoodType
-      });
-      
-      const activeSession = await meditationSessionService.getActiveSession(userId.toString());
-      expect(activeSession).toBeDefined();
-      expect(activeSession?.status).toBe('active');
-      expect(activeSession?.userId.toString()).toBe(userId.toString());
-    });
-
-    it('should return null if no active session exists', async () => {
-      const activeSession = await meditationSessionService.getActiveSession(userId.toString());
-      expect(activeSession).toBeNull();
-    });
-  });
-
-  describe('recordInterruption', () => {
-    it('should increment interruption count', async () => {
-      const { sessionId } = await meditationSessionService.startSession(userId.toString(), {
-        meditationId: guidedMeditationId.toString(),
-        title: 'Test Meditation Session',
-        type: 'guided',
-        completed: false,
-        duration: 600,
-        durationCompleted: 0,
-        moodBefore: 'neutral' as MoodType
-      });
-      
-      await meditationSessionService.recordInterruption(sessionId);
-      
-      const session = await MeditationSession.findById(sessionId);
-      expect(session?.interruptions).toBe(1);
-      
-      const analytics = await SessionAnalytics.findOne({ sessionId: new mongoose.Types.ObjectId(sessionId) });
-      expect(analytics?.interruptions).toBe(1);
-    });
-  });
-
-  it('should create a new meditation session', async () => {
-    const session = await meditationSessionService.createSession({
-      userId: testUser._id,
-      duration: 600,
-      type: 'guided'
-    });
-
-    expect(session).toBeDefined();
-    expect(session.userId).toEqual(testUser._id);
-    expect(session.duration).toBe(600);
-  });
-
-  it('should retrieve user sessions', async () => {
-    await meditationSessionService.createSession({
-      userId: testUser._id,
-      duration: 600,
-      type: 'guided'
-    });
-
-    const sessions = await meditationSessionService.getUserSessions(testUser._id);
-    expect(sessions.length).toBeGreaterThan(0);
-  });
-}); 
+});

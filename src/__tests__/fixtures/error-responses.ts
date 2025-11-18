@@ -1,39 +1,41 @@
-import { ErrorCategory } from '../../utils/errors';
-import { ErrorCodes } from '../../utils/error-codes';
+import { ErrorCodes, ErrorCategory } from '../../utils/errors';
 
 // HTTP Status Codes
 export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
   BAD_REQUEST: 400,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
-  INTERNAL_ERROR: 500
+  INTERNAL_SERVER_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503
 } as const;
 
 // Common Error Messages
-export const ERROR_MESSAGES = {
-  VALIDATION: 'Invalid input data',
-  AUTHENTICATION: 'Authentication required',
+export const COMMON_ERROR_MESSAGES = {
+  VALIDATION_ERROR: 'Validation error',
+  UNAUTHORIZED: 'Unauthorized',
+  FORBIDDEN: 'Forbidden',
   NOT_FOUND: 'Resource not found',
-  INTERNAL: 'Internal server error',
-  UNAUTHORIZED: 'Not authorized to perform this action',
-  CONCURRENCY: 'Resource was modified by another request'
+  INTERNAL_SERVER_ERROR: 'Internal server error',
+  DATABASE_ERROR: 'Database error'
 } as const;
 
 // Test Error Responses
 export const createErrorResponse = (
   code: ErrorCodes,
-  message: string,
   category: ErrorCategory,
-  details?: unknown
+  message: string,
+  details?: any
 ) => ({
   error: {
+    timestamp: expect.any(Date),
     code,
-    message,
     category,
-    ...(details ? { details } : {}),
-    timestamp: expect.any(String)
+    message,
+    details
   }
 });
 
@@ -66,17 +68,17 @@ export const sampleErrors = {
   notFound: {
     code: ErrorCodes.NOT_FOUND,
     message: 'Resource not found',
-    category: ErrorCategory.BUSINESS
+    category: ErrorCategory.NOT_FOUND
   },
   authentication: {
     code: ErrorCodes.AUTHENTICATION_ERROR,
     message: 'Authentication required',
-    category: ErrorCategory.SECURITY
+    category: ErrorCategory.AUTHENTICATION
   },
   database: {
-    code: ErrorCodes.DATABASE_ERROR,
+    code: ErrorCodes.INTERNAL_ERROR,
     message: 'Database operation failed',
-    category: ErrorCategory.TECHNICAL
+    category: ErrorCategory.INTERNAL
   }
 };
 
@@ -86,48 +88,57 @@ export const ERROR_SCENARIOS = {
     status: HTTP_STATUS.BAD_REQUEST,
     response: createErrorResponse(
       ErrorCodes.VALIDATION_ERROR,
-      ERROR_MESSAGES.VALIDATION,
-      ErrorCategory.VALIDATION
+      ErrorCategory.VALIDATION,
+      COMMON_ERROR_MESSAGES.VALIDATION_ERROR
     )
   },
   authentication: {
     status: HTTP_STATUS.UNAUTHORIZED,
     response: createErrorResponse(
       ErrorCodes.AUTHENTICATION_ERROR,
-      ERROR_MESSAGES.AUTHENTICATION,
-      ErrorCategory.SECURITY
+      ErrorCategory.AUTHENTICATION,
+      COMMON_ERROR_MESSAGES.UNAUTHORIZED
     )
   },
   authorization: {
     status: HTTP_STATUS.FORBIDDEN,
     response: createErrorResponse(
-      ErrorCodes.UNAUTHORIZED,
-      ERROR_MESSAGES.AUTHENTICATION,
-      ErrorCategory.SECURITY
+      ErrorCodes.FORBIDDEN,
+      ErrorCategory.FORBIDDEN,
+      COMMON_ERROR_MESSAGES.FORBIDDEN
     )
   },
   notFound: {
     status: HTTP_STATUS.NOT_FOUND,
     response: createErrorResponse(
       ErrorCodes.NOT_FOUND,
-      ERROR_MESSAGES.NOT_FOUND,
-      ErrorCategory.BUSINESS
+      ErrorCategory.NOT_FOUND,
+      COMMON_ERROR_MESSAGES.NOT_FOUND
     )
   },
   concurrency: {
     status: HTTP_STATUS.CONFLICT,
     response: createErrorResponse(
-      ErrorCodes.CONCURRENCY_ERROR,
-      ERROR_MESSAGES.CONCURRENCY,
-      ErrorCategory.TECHNICAL
+      ErrorCodes.CONFLICT,
+      ErrorCategory.CONFLICT,
+      COMMON_ERROR_MESSAGES.DATABASE_ERROR
     )
   },
   internal: {
-    status: HTTP_STATUS.INTERNAL_ERROR,
+    status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
     response: createErrorResponse(
       ErrorCodes.INTERNAL_ERROR,
-      ERROR_MESSAGES.INTERNAL,
-      ErrorCategory.TECHNICAL
+      ErrorCategory.INTERNAL,
+      COMMON_ERROR_MESSAGES.INTERNAL_SERVER_ERROR
+    )
+  },
+  database: {
+    status: HTTP_STATUS.SERVICE_UNAVAILABLE,
+    response: createErrorResponse(
+      ErrorCodes.DATABASE_ERROR,
+      ErrorCategory.INFRASTRUCTURE,
+      COMMON_ERROR_MESSAGES.DATABASE_ERROR,
+      { retryable: true }
     )
   }
 } as const;
@@ -163,4 +174,109 @@ export const ERROR_CONTEXTS = {
     userId: 'test-user-id',
     role: 'USER'
   }
-} as const; 
+} as const;
+
+// Test errors
+export const TEST_ERRORS = {
+  VALIDATION: {
+    REQUIRED_FIELD: createErrorResponse(
+      ErrorCodes.VALIDATION_ERROR,
+      ErrorCategory.VALIDATION,
+      'Required field missing',
+      { field: 'name', constraint: 'required' }
+    ),
+    INVALID_EMAIL: createErrorResponse(
+      ErrorCodes.VALIDATION_ERROR,
+      ErrorCategory.VALIDATION,
+      'Invalid email format',
+      { field: 'email', constraint: 'format' }
+    ),
+    INVALID_PASSWORD: createErrorResponse(
+      ErrorCodes.VALIDATION_ERROR,
+      ErrorCategory.VALIDATION,
+      'Invalid password',
+      { field: 'password', constraint: 'format' }
+    ),
+    PASSWORD_LENGTH: createErrorResponse(
+      ErrorCodes.VALIDATION_ERROR,
+      ErrorCategory.VALIDATION,
+      'Password must be at least 8 characters',
+      { field: 'password', constraint: 'minLength', min: 8 }
+    ),
+    DUPLICATE_EMAIL: createErrorResponse(
+      ErrorCodes.VALIDATION_ERROR,
+      ErrorCategory.VALIDATION,
+      'Email already exists',
+      { field: 'email', constraint: 'unique' }
+    )
+  },
+  AUTH: {
+    INVALID_CREDENTIALS: createErrorResponse(
+      ErrorCodes.UNAUTHORIZED,
+      ErrorCategory.AUTHENTICATION,
+      'Invalid email or password'
+    ),
+    ACCOUNT_INACTIVE: createErrorResponse(
+      ErrorCodes.UNAUTHORIZED,
+      ErrorCategory.AUTHENTICATION,
+      'Account is inactive'
+    ),
+    ACCOUNT_LOCKED: createErrorResponse(
+      ErrorCodes.UNAUTHORIZED,
+      ErrorCategory.AUTHENTICATION,
+      'Account is locked',
+      { unlockTime: expect.any(String) }
+    ),
+    INVALID_TOKEN: createErrorResponse(
+      ErrorCodes.UNAUTHORIZED,
+      ErrorCategory.AUTHENTICATION,
+      'Invalid or expired token'
+    ),
+    TOKEN_EXPIRED: createErrorResponse(
+      ErrorCodes.UNAUTHORIZED,
+      ErrorCategory.AUTHENTICATION,
+      'Token has expired'
+    )
+  },
+  AUTHORIZATION: {
+    INSUFFICIENT_PERMISSIONS: createErrorResponse(
+      ErrorCodes.FORBIDDEN,
+      ErrorCategory.AUTHORIZATION,
+      'Insufficient permissions',
+      { requiredRole: 'ADMIN' }
+    ),
+    RESOURCE_ACCESS_DENIED: createErrorResponse(
+      ErrorCodes.FORBIDDEN,
+      ErrorCategory.AUTHORIZATION,
+      'Access to resource denied'
+    )
+  },
+  NOT_FOUND: {
+    RESOURCE_NOT_FOUND: createErrorResponse(
+      ErrorCodes.NOT_FOUND,
+      ErrorCategory.NOT_FOUND,
+      'Resource not found',
+      { resourceType: 'user' }
+    ),
+    RESOURCE_DELETED: createErrorResponse(
+      ErrorCodes.NOT_FOUND,
+      ErrorCategory.NOT_FOUND,
+      'Resource not found',
+      { resourceType: 'user', reason: 'deleted' }
+    )
+  },
+  INFRASTRUCTURE: {
+    DATABASE_ERROR: createErrorResponse(
+      ErrorCodes.DATABASE_ERROR,
+      ErrorCategory.INFRASTRUCTURE,
+      'Database error occurred',
+      { retryable: true }
+    ),
+    SERVICE_UNAVAILABLE: createErrorResponse(
+      ErrorCodes.SERVICE_UNAVAILABLE,
+      ErrorCategory.INFRASTRUCTURE,
+      'Service temporarily unavailable',
+      { retryAfter: expect.any(Number) }
+    )
+  }
+}; 

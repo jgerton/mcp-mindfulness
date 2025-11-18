@@ -1,5 +1,6 @@
 import { BreathingPattern, BreathingSession } from '../models/breathing.model';
 import { StressManagementService } from './stress-management.service';
+import { StressLevel } from '../types/stress.types';
 import mongoose from 'mongoose';
 
 export class BreathingService {
@@ -79,13 +80,19 @@ export class BreathingService {
     if (session.stressLevelBefore !== undefined && stressLevelAfter !== undefined) {
       await StressManagementService.recordStressChange(
         session.userId,
-        session.stressLevelBefore.toString(),
-        stressLevelAfter.toString(),
+        this.mapNumberToStressLevel(session.stressLevelBefore),
+        this.mapNumberToStressLevel(stressLevelAfter),
         (session._id as mongoose.Types.ObjectId).toString()
       );
     }
 
     return session;
+  }
+
+  private static mapNumberToStressLevel(level: number): StressLevel {
+    if (level <= 3) return StressLevel.LOW;
+    if (level <= 7) return StressLevel.MODERATE;
+    return StressLevel.HIGH;
   }
 
   static async getPattern(name: string): Promise<BreathingPattern | null> {

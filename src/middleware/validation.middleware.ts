@@ -1,42 +1,71 @@
 import { NextFunction, Request, Response } from 'express';
 import { AnyZodObject, ZodError } from 'zod';
-import { StressLevel, TechniqueType } from '../models/stress.model';
+import { Schema } from 'joi';
+import { StressLevel, TechniqueType } from '../types/stress.types';
+import { ValidationError } from '../utils/errors';
 
+// Interface to support both Zod and Joi schemas
 interface ValidateSchema {
-  params?: AnyZodObject;
-  query?: AnyZodObject;
-  body?: AnyZodObject;
+  params?: AnyZodObject | Schema;
+  query?: AnyZodObject | Schema;
+  body?: AnyZodObject | Schema;
+}
+
+// Define interface for Joi validation error
+interface JoiValidationError extends Error {
+  name: string;
+  details: Array<{ message: string }>;
 }
 
 export const validateRequest = (schema: ValidateSchema) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (schema.params) {
-        req.params = await schema.params.parseAsync(req.params);
-      }
-      if (schema.query) {
-        req.query = await schema.query.parseAsync(req.query);
-      }
       if (schema.body) {
-        req.body = await schema.body.parseAsync(req.body);
+        if ('parse' in schema.body) {
+          // Zod schema
+          req.body = await schema.body.parseAsync(req.body);
+        } else {
+          // Joi schema
+          const { error, value } = schema.body.validate(req.body);
+          if (error) {
+            throw new ValidationError(error.details[0].message);
+          }
+          req.body = value;
+        }
       }
+
+      if (schema.query) {
+        if ('parse' in schema.query) {
+          // Zod schema
+          req.query = await schema.query.parseAsync(req.query);
+        } else {
+          // Joi schema
+          const { error, value } = schema.query.validate(req.query);
+          if (error) {
+            throw new ValidationError(error.details[0].message);
+          }
+          req.query = value;
+        }
+      }
+
+      if (schema.params) {
+        if ('parse' in schema.params) {
+          // Zod schema
+          req.params = await schema.params.parseAsync(req.params);
+        } else {
+          // Joi schema
+          const { error, value } = schema.params.validate(req.params);
+          if (error) {
+            throw new ValidationError(error.details[0].message);
+          }
+          req.params = value;
+        }
+      }
+
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        // Check for specific error types to provide better error messages
-        const errorMessage = error.errors.map(e => {
-          if (e.path.includes('stressLevelBefore')) {
-            return `Invalid stress level: ${e.message}`;
-          } else if (e.path.includes('completedGroups')) {
-            return `Invalid completed groups: ${e.message}`;
-          } else {
-            return e.message;
-          }
-        }).join(', ');
-
-        res.status(400).json({
-          error: errorMessage
-        });
+        next(new ValidationError(error.errors[0].message));
       } else {
         next(error);
       }
@@ -99,6 +128,38 @@ export const validatePreferences = (req: Request, res: Response, next: NextFunct
       res.status(400).json({ error: 'Invalid reminder frequency' });
       return;
     }
+  }
+
+  next();
+};
+
+export const validateStressTracking = (req: Request, res: Response, next: NextFunction): void => {
+  const { level, notes, triggers, symptoms } = req.body;
+
+  // Validate stress level (required)
+  if (typeof level !== 'number' || level < 0 || level > 10) {
+    res.status(400).json({ error: 'Stress level must be a number between 0 and 10' });
+    return;
+  }
+
+  // Validate notes (optional)
+  if (notes !== undefined && (typeof notes !== 'string' || notes.length > 500)) {
+    res.status(400).json({ error: 'Notes must be a string with maximum 500 characters' });
+    return;
+  }
+
+  // Validate triggers (optional)
+  if (triggers !== undefined && (!Array.isArray(triggers) || 
+      !triggers.every(item => typeof item === 'string'))) {
+    res.status(400).json({ error: 'Triggers must be an array of strings' });
+    return;
+  }
+
+  // Validate symptoms (optional)
+  if (symptoms !== undefined && (!Array.isArray(symptoms) || 
+      !symptoms.every(item => typeof item === 'string'))) {
+    res.status(400).json({ error: 'Symptoms must be an array of strings' });
+    return;
   }
 
   next();

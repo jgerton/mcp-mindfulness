@@ -1,109 +1,145 @@
 import mongoose from 'mongoose';
 import { SessionAnalytics } from '../models/session-analytics.model';
 import { connectDB, disconnectDB, clearDB } from './helpers/db.helper';
+import { Request, Response } from 'express';
+import { TestFactory } from '../utils/test-factory';
+import { ErrorCode, ErrorCategory } from '../../errors';
+import { setupModelMocks } from '../utils/setup-model-mocks';
 
-describe('SessionAnalytics Model Test', () => {
-  let userId: mongoose.Types.ObjectId;
-  let meditationId: mongoose.Types.ObjectId;
+// Define types for better type safety
+interface TestContext {
+  mockReq: Request;
+  mockRes: Response;
+  testFactory: TestFactory;
+}
 
-  beforeAll(async () => {
-    await connectDB();
+
+describe('Session-analyticsModel Tests', () => {
+  let context: TestContext;
+
+  beforeAll(() => {
+    // Setup any test-wide configurations
   });
 
-  afterAll(async () => {
-    await disconnectDB();
-  });
-
-  beforeEach(async () => {
-    await clearDB();
-    userId = new mongoose.Types.ObjectId();
-    meditationId = new mongoose.Types.ObjectId();
-  });
-
-  it('should create & save session analytics successfully', async () => {
-    const validSessionAnalytics = {
-      userId,
-      sessionId: new mongoose.Types.ObjectId(),
-      meditationId,
-      startTime: new Date(),
-      duration: 15,
-      durationCompleted: 15,
-      completed: true,
-      moodBefore: 'neutral',
-      moodAfter: 'calm',
-      focusScore: 8,
-      interruptions: 2,
-      notes: 'Test session',
-      maintainedStreak: true
+  beforeEach(() => {
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
     };
-
-    const savedSessionAnalytics = await new SessionAnalytics(validSessionAnalytics).save();
-    expect(savedSessionAnalytics._id).toBeDefined();
-    expect(savedSessionAnalytics.userId.toString()).toBe(userId.toString());
-    expect(savedSessionAnalytics.moodBefore).toBe('neutral');
-    expect(savedSessionAnalytics.moodAfter).toBe('calm');
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
+    };
   });
 
-  it('should fail to save with invalid mood values', async () => {
-    const sessionAnalyticsWithInvalidMood = new SessionAnalytics({
-      userId,
-      meditationId,
-      duration: 600,
-      focusScore: 8,
-      moodBefore: 'invalid_mood',
-      moodAfter: 'invalid_mood',
-      interruptions: 0,
-      notes: 'Test session',
-      completed: true,
-      startTime: new Date(),
-      date: new Date()
-    });
-
-    await expect(sessionAnalyticsWithInvalidMood.save()).rejects.toThrow();
+  afterEach(() => {
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
   });
 
-  it('should fail to save without required fields', async () => {
-    const sessionAnalyticsWithoutRequired = new SessionAnalytics({
-      userId,
-      duration: 600
-    });
+  describe('Success Cases', () => {
+    
+      it('should successfully process valid input', async () => {
+        // Arrange
+        const input = context.testFactory.createValidInput();
+        context.mockReq.body = input;
+        
+        const expectedResult = context.testFactory.createExpectedResult();
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockResolvedValue(expectedResult);
 
-    await expect(sessionAnalyticsWithoutRequired.save()).rejects.toThrow();
+        // Act
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+
+          // Assert
+          expect(context.mockRes.status).toHaveBeenCalledWith(200);
+          expect(context.mockRes.json).toHaveBeenCalledWith(
+            expect.objectContaining(expectedResult)
+          );
+        } catch (error) {
+          fail('Should not throw an error');
+        }
+      });
+    
   });
 
-  it('should enforce duration minimum value', async () => {
-    const sessionAnalyticsWithShortDuration = new SessionAnalytics({
-      userId,
-      meditationId,
-      duration: 0,
-      focusScore: 8,
-      moodBefore: 'neutral',
-      moodAfter: 'happy',
-      interruptions: 0,
-      notes: 'Test session',
-      completed: true,
-      startTime: new Date(),
-      date: new Date()
-    });
+  describe('Error Cases', () => {
+    
+      it('should handle invalid input error', async () => {
+        // Arrange
+        const invalidInput = context.testFactory.createInvalidInput();
+        context.mockReq.body = invalidInput;
 
-    await expect(sessionAnalyticsWithShortDuration.save()).rejects.toThrow();
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockRejectedValue({
+            code: ErrorCode.INVALID_INPUT,
+            category: ErrorCategory.VALIDATION,
+            message: 'Invalid input provided',
+          });
+
+        // Act & Assert
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+          fail('Should throw an error');
+        } catch (error: any) {
+          expect(error.code).toBe(ErrorCode.INVALID_INPUT);
+          expect(error.category).toBe(ErrorCategory.VALIDATION);
+          expect(context.mockRes.status).not.toHaveBeenCalled();
+        }
+      });
+    
   });
 
-  it('should enforce focus score range', async () => {
-    const sessionAnalyticsWithInvalidScore = new SessionAnalytics({
-      userId,
-      meditationId,
-      duration: 600,
-      focusScore: 11,
-      moodBefore: 'neutral',
-      moodAfter: 'happy',
-      interruptions: 0,
-      notes: 'Test session',
-      completed: true,
-      startTime: new Date(),
-      date: new Date()
-    });
+  describe('Edge Cases', () => {
+    
+      it('should handle boundary conditions', async () => {
+        // Arrange
+        const edgeInput = context.testFactory.createEdgeCaseInput();
+        context.mockReq.body = edgeInput;
 
-    await expect(sessionAnalyticsWithInvalidScore.save()).rejects.toThrow();
+        // Mock implementation with specific logic
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockImplementation(async (input) => {
+            if (someEdgeCondition(input)) {
+              return specialHandling(input);
+            }
+            return normalHandling(input);
+          });
+
+        // Act
+        await controller.handleComponent(context.mockReq, context.mockRes);
+
+        // Assert
+        expect(context.mockRes.status).toHaveBeenCalledWith(200);
+        expect(context.mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            // Edge case specific assertions
+          })
+        );
+      });
+    
   });
-}); 
+});

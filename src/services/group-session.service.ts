@@ -253,12 +253,12 @@ export class GroupSessionService {
       { path: 'meditationId' },
       { path: 'participants.userId', select: 'username' }
     ]).sort({ scheduledTime: -1 }).lean();
-    
+
     // Convert populated ObjectIds to strings for comparison
     return sessions.map(session => ({
       ...session,
       hostId: session.hostId._id || session.hostId
-    }));
+    })) as unknown as IGroupSession[];
   }
 
   static async endSession(sessionId: string, hostId: string): Promise<IGroupSession> {

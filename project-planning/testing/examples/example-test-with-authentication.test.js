@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -27,31 +36,31 @@ describe('Session API', () => {
     let validToken1;
     let validToken2;
     let invalidToken;
-    beforeAll(async () => {
+    beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
         // Connect to test database
-        await mongoose_1.default.connect(process.env.MONGODB_TEST_URI);
-    });
-    afterAll(async () => {
+        yield mongoose_1.default.connect(process.env.MONGODB_TEST_URI);
+    }));
+    afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
         // Disconnect from test database
-        await mongoose_1.default.connection.close();
-    });
-    beforeEach(async () => {
+        yield mongoose_1.default.connection.close();
+    }));
+    beforeEach(() => __awaiter(void 0, void 0, void 0, function* () {
         // Clear test collections
-        await (0, db_1.clearTestCollection)('users');
-        await (0, db_1.clearTestCollection)('sessions');
+        yield (0, db_1.clearTestCollection)('users');
+        yield (0, db_1.clearTestCollection)('sessions');
         // Create test users
-        testUser1 = await user_model_1.User.create({
+        testUser1 = yield user_model_1.User.create({
             username: 'testuser1',
             email: 'test1@example.com',
             password: 'password123'
         });
-        testUser2 = await user_model_1.User.create({
+        testUser2 = yield user_model_1.User.create({
             username: 'testuser2',
             email: 'test2@example.com',
             password: 'password123'
         });
         // Create test session
-        testSession = await session_model_1.Session.create({
+        testSession = yield session_model_1.Session.create({
             userId: testUser1._id,
             duration: 10,
             type: 'breathing',
@@ -63,65 +72,65 @@ describe('Session API', () => {
         validToken1 = jsonwebtoken_1.default.sign({ _id: testUser1._id, username: testUser1.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
         validToken2 = jsonwebtoken_1.default.sign({ _id: testUser2._id, username: testUser2.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
         invalidToken = 'invalid.token.string';
-    });
+    }));
     describe('GET /api/sessions/:id', () => {
-        it('should return 200 and session data with valid token and ownership', async () => {
-            const response = await (0, supertest_1.default)(app_1.app)
+        it('should return 200 and session data with valid token and ownership', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .get(`/api/sessions/${testSession._id}`)
                 .set('Authorization', `Bearer ${validToken1}`);
             expect(response.status).toBe(200);
             expect(response.body._id).toBe(testSession._id.toString());
             expect(response.body.userId).toBe(testUser1._id.toString());
-        });
-        it('should return 401 with invalid token', async () => {
-            const response = await (0, supertest_1.default)(app_1.app)
+        }));
+        it('should return 401 with invalid token', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .get(`/api/sessions/${testSession._id}`)
                 .set('Authorization', `Bearer ${invalidToken}`);
             expect(response.status).toBe(401);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Invalid token');
-        });
-        it('should return 401 with no token', async () => {
-            const response = await (0, supertest_1.default)(app_1.app)
+        }));
+        it('should return 401 with no token', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .get(`/api/sessions/${testSession._id}`);
             expect(response.status).toBe(401);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Authentication required');
-        });
-        it('should return 403 when accessing another user\'s session', async () => {
-            const response = await (0, supertest_1.default)(app_1.app)
+        }));
+        it('should return 403 when accessing another user\'s session', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .get(`/api/sessions/${testSession._id}`)
                 .set('Authorization', `Bearer ${validToken2}`);
             expect(response.status).toBe(403);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Access denied');
-        });
-        it('should return 404 for non-existent session', async () => {
+        }));
+        it('should return 404 for non-existent session', () => __awaiter(void 0, void 0, void 0, function* () {
             const nonExistentId = new mongoose_1.default.Types.ObjectId();
-            const response = await (0, supertest_1.default)(app_1.app)
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .get(`/api/sessions/${nonExistentId}`)
                 .set('Authorization', `Bearer ${validToken1}`);
             expect(response.status).toBe(404);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Session not found');
-        });
-        it('should return 400 for invalid session ID format', async () => {
-            const response = await (0, supertest_1.default)(app_1.app)
+        }));
+        it('should return 400 for invalid session ID format', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .get('/api/sessions/invalid-id')
                 .set('Authorization', `Bearer ${validToken1}`);
             expect(response.status).toBe(400);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Invalid session ID format');
-        });
+        }));
     });
     describe('POST /api/sessions', () => {
-        it('should create a new session with valid token and data', async () => {
+        it('should create a new session with valid token and data', () => __awaiter(void 0, void 0, void 0, function* () {
             const sessionData = {
                 duration: 15,
                 type: 'pmr',
                 stressLevelBefore: 8
             };
-            const response = await (0, supertest_1.default)(app_1.app)
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .post('/api/sessions')
                 .set('Authorization', `Bearer ${validToken1}`)
                 .send(sessionData);
@@ -132,39 +141,39 @@ describe('Session API', () => {
             expect(response.body.type).toBe(sessionData.type);
             expect(response.body.stressLevelBefore).toBe(sessionData.stressLevelBefore);
             expect(response.body.completed).toBe(false);
-        });
-        it('should return 400 with invalid data', async () => {
+        }));
+        it('should return 400 with invalid data', () => __awaiter(void 0, void 0, void 0, function* () {
             const invalidData = {
             // Missing required fields
             };
-            const response = await (0, supertest_1.default)(app_1.app)
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .post('/api/sessions')
                 .set('Authorization', `Bearer ${validToken1}`)
                 .send(invalidData);
             expect(response.status).toBe(400);
             expect(response.body).toHaveProperty('error');
-        });
-        it('should return 401 with invalid token', async () => {
+        }));
+        it('should return 401 with invalid token', () => __awaiter(void 0, void 0, void 0, function* () {
             const sessionData = {
                 duration: 15,
                 type: 'pmr',
                 stressLevelBefore: 8
             };
-            const response = await (0, supertest_1.default)(app_1.app)
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .post('/api/sessions')
                 .set('Authorization', `Bearer ${invalidToken}`)
                 .send(sessionData);
             expect(response.status).toBe(401);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Invalid token');
-        });
+        }));
     });
     describe('PATCH /api/sessions/:id/complete', () => {
-        it('should complete a session with valid token and ownership', async () => {
+        it('should complete a session with valid token and ownership', () => __awaiter(void 0, void 0, void 0, function* () {
             const completionData = {
                 stressLevelAfter: 3
             };
-            const response = await (0, supertest_1.default)(app_1.app)
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .patch(`/api/sessions/${testSession._id}/complete`)
                 .set('Authorization', `Bearer ${validToken1}`)
                 .send(completionData);
@@ -173,22 +182,22 @@ describe('Session API', () => {
             expect(response.body.completed).toBe(true);
             expect(response.body.stressLevelAfter).toBe(completionData.stressLevelAfter);
             expect(response.body).toHaveProperty('endTime');
-        });
-        it('should return 403 when completing another user\'s session', async () => {
+        }));
+        it('should return 403 when completing another user\'s session', () => __awaiter(void 0, void 0, void 0, function* () {
             const completionData = {
                 stressLevelAfter: 3
             };
-            const response = await (0, supertest_1.default)(app_1.app)
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .patch(`/api/sessions/${testSession._id}/complete`)
                 .set('Authorization', `Bearer ${validToken2}`)
                 .send(completionData);
             expect(response.status).toBe(403);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Access denied');
-        });
-        it('should return 400 when completing an already completed session', async () => {
+        }));
+        it('should return 400 when completing an already completed session', () => __awaiter(void 0, void 0, void 0, function* () {
             // First complete the session
-            await session_model_1.Session.findByIdAndUpdate(testSession._id, {
+            yield session_model_1.Session.findByIdAndUpdate(testSession._id, {
                 completed: true,
                 endTime: new Date(),
                 stressLevelAfter: 4
@@ -196,13 +205,13 @@ describe('Session API', () => {
             const completionData = {
                 stressLevelAfter: 3
             };
-            const response = await (0, supertest_1.default)(app_1.app)
+            const response = yield (0, supertest_1.default)(app_1.app)
                 .patch(`/api/sessions/${testSession._id}/complete`)
                 .set('Authorization', `Bearer ${validToken1}`)
                 .send(completionData);
             expect(response.status).toBe(400);
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toBe('Session already completed');
-        });
+        }));
     });
 });

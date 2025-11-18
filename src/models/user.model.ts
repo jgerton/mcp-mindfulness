@@ -1,62 +1,74 @@
-import mongoose from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-export interface IUser {
-  username: string;
+export interface IUser extends Document {
+  username?: string;
   email: string;
   password: string;
-  friendIds: mongoose.Types.ObjectId[];
-  blockedUserIds: mongoose.Types.ObjectId[];
-  friends?: mongoose.Types.ObjectId[];
-  blockedUsers?: mongoose.Types.ObjectId[];
+  friendIds?: Types.ObjectId[];
+  blockedUserIds?: Types.ObjectId[];
+  friends?: Types.ObjectId[];
+  blockedUsers?: Types.ObjectId[];
+  preferences?: {
+    stressManagement?: {
+      preferredCategories?: string[];
+      preferredDuration?: number;
+      difficultyLevel?: string;
+    }
+  };
   createdAt: Date;
   updatedAt: Date;
-  lastLogin: Date;
+  lastLogin?: Date;
   isActive: boolean;
+  comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
-const userSchema = new mongoose.Schema<IUser>(
-  {
-    username: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-      minlength: 3
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-      lowercase: true
-    },
-    password: {
-      type: String,
-      required: true,
-      minlength: 6
-    },
-    friendIds: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: []
-    }],
-    blockedUserIds: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: []
-    }],
-    lastLogin: {
-      type: Date,
-      default: Date.now
-    },
-    isActive: {
-      type: Boolean,
-      default: true
+const userSchema = new Schema<IUser>({
+  username: {
+    type: String,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  friendIds: [{
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  blockedUserIds: [{
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  preferences: {
+    type: Object,
+    default: {
+      stressManagement: {
+        preferredCategories: ['breathing', 'meditation'],
+        preferredDuration: 10,
+        difficultyLevel: 'beginner'
+      }
     }
   },
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
-);
+  lastLogin: {
+    type: Date
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
 // Virtual fields for friends and blocked users
 userSchema.virtual('friends').get(function(this: IUser) {
@@ -85,4 +97,4 @@ userSchema.methods.comparePassword = async function(candidatePassword: string): 
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export const User = mongoose.model<IUser>('User', userSchema); 
+export const User = model<IUser>('User', userSchema); 

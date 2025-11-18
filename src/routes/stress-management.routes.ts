@@ -1,23 +1,19 @@
 import { Router } from 'express';
 import { StressManagementController } from '../controllers/stress-management.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
 import { validateAssessment, validatePreferences } from '../middleware/validation.middleware';
 
 const router = Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateToken);
-
 // Assessment routes
-router.post('/assessment', validateAssessment, StressManagementController.submitAssessment);
-router.get('/assessment/history', StressManagementController.getStressHistory);
-router.get('/assessment/latest', StressManagementController.getLatestAssessment);
+router.post('/:userId/assess', validateAssessment, StressManagementController.assessStressLevel);
+router.get('/:userId/recommendations', StressManagementController.getRecommendations);
+router.post('/:userId/recommendations', StressManagementController.getRecommendationsWithLevel);
+router.post('/:userId/record-change', StressManagementController.recordStressChange);
 
-// Preferences routes
-router.put('/preferences', validatePreferences, StressManagementController.updatePreferences);
-router.get('/preferences', StressManagementController.getPreferences);
-
-// Insights route
-router.get('/insights', StressManagementController.getStressInsights);
+// Analytics routes
+router.get('/:userId/history', StressManagementController.getStressHistory);
+router.get('/:userId/analytics', StressManagementController.getStressAnalytics);
+router.get('/:userId/patterns', StressManagementController.getStressPatterns);
+router.get('/:userId/peak-hours', StressManagementController.getPeakStressHours);
 
 export default router; 

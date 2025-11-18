@@ -1,7 +1,12 @@
 import { Request, Response } from 'express';
+import { Model } from 'mongoose';
 import { StressTechniqueService } from '../services/stress-technique.service';
+import { BaseController } from '../core/base-controller';
+import { StressTechniqueDocument } from '../models/stress-technique.model';
+import { HttpError } from '../errors/http-error';
+import { FilterQuery } from 'mongoose';
 
-export class StressTechniqueController {
+export class StressTechniqueController extends BaseController<StressTechniqueDocument> {
   /**
    * Get all stress management techniques
    * @route GET /api/stress-techniques
@@ -14,11 +19,11 @@ export class StressTechniqueController {
       const result = await StressTechniqueService.getAllTechniques(page, limit);
       
       res.status(200).json(result);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting techniques:', error);
       res.status(500).json({
         message: 'Error retrieving stress management techniques',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -37,11 +42,11 @@ export class StressTechniqueController {
       }
       
       res.status(200).json({ technique });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting technique by ID:', error);
       res.status(500).json({
         message: 'Error retrieving stress management technique',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -54,11 +59,11 @@ export class StressTechniqueController {
     try {
       const techniques = await StressTechniqueService.getTechniquesByCategory(req.params.category);
       res.status(200).json({ techniques });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting techniques by category:', error);
       res.status(500).json({
         message: 'Error retrieving stress management techniques by category',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -71,11 +76,11 @@ export class StressTechniqueController {
     try {
       const techniques = await StressTechniqueService.getTechniquesByDifficulty(req.params.level);
       res.status(200).json({ techniques });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting techniques by difficulty:', error);
       res.status(500).json({
         message: 'Error retrieving stress management techniques by difficulty',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -95,11 +100,11 @@ export class StressTechniqueController {
       
       const techniques = await StressTechniqueService.searchTechniques(query);
       res.status(200).json({ techniques });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error searching techniques:', error);
       res.status(500).json({
         message: 'Error searching stress management techniques',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -110,7 +115,7 @@ export class StressTechniqueController {
    */
   static async getRecommendedTechniques(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?._id;
       
       if (!userId) {
         res.status(401).json({ message: 'User not authenticated' });
@@ -119,17 +124,17 @@ export class StressTechniqueController {
       
       const recommendations = await StressTechniqueService.getRecommendedTechniques(userId);
       res.status(200).json({ recommendations });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting recommendations:', error);
       
-      if (error.message === 'User not found') {
+      if (error instanceof Error && error.message === 'User not found') {
         res.status(404).json({ message: 'User not found' });
         return;
       }
       
       res.status(500).json({
         message: 'Error retrieving stress management technique recommendations',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -145,10 +150,10 @@ export class StressTechniqueController {
         message: 'Stress management technique created successfully',
         technique 
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating technique:', error);
       
-      if (error.name === 'ValidationError') {
+      if (error instanceof Error && error.name === 'ValidationError') {
         res.status(400).json({
           message: 'Validation error',
           error: error.message
@@ -158,7 +163,7 @@ export class StressTechniqueController {
       
       res.status(500).json({
         message: 'Error creating stress management technique',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -180,10 +185,10 @@ export class StressTechniqueController {
         message: 'Stress management technique updated successfully',
         technique 
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error updating technique:', error);
       
-      if (error.name === 'ValidationError') {
+      if (error instanceof Error && error.name === 'ValidationError') {
         res.status(400).json({
           message: 'Validation error',
           error: error.message
@@ -193,7 +198,7 @@ export class StressTechniqueController {
       
       res.status(500).json({
         message: 'Error updating stress management technique',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -215,12 +220,119 @@ export class StressTechniqueController {
         message: 'Stress management technique deleted successfully',
         technique 
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error deleting technique:', error);
       res.status(500).json({
         message: 'Error deleting stress management technique',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
+  }
+
+  protected async validateCreate(req: Request): Promise<void> {
+    const { name, description, duration, type, difficulty } = req.body;
+
+    if (!name) {
+      throw HttpError.badRequest('Name is required');
+    }
+    if (!description) {
+      throw HttpError.badRequest('Description is required');
+    }
+    if (!duration || duration < 0) {
+      throw HttpError.badRequest('Valid duration is required');
+    }
+    if (!type || !['BREATHING', 'MEDITATION', 'PHYSICAL'].includes(type)) {
+      throw HttpError.badRequest('Valid type is required (BREATHING, MEDITATION, or PHYSICAL)');
+    }
+    if (!difficulty || !['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].includes(difficulty)) {
+      throw HttpError.badRequest('Valid difficulty is required (BEGINNER, INTERMEDIATE, or ADVANCED)');
+    }
+  }
+
+  protected async validateUpdate(req: Request): Promise<void> {
+    const { type, difficulty, duration } = req.body;
+
+    if (type && !['BREATHING', 'MEDITATION', 'PHYSICAL'].includes(type)) {
+      throw HttpError.badRequest('Invalid type specified');
+    }
+    if (difficulty && !['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].includes(difficulty)) {
+      throw HttpError.badRequest('Invalid difficulty specified');
+    }
+    if (duration !== undefined && duration < 0) {
+      throw HttpError.badRequest('Duration must be a positive number');
+    }
+  }
+
+  protected buildFilterQuery(req: Request): FilterQuery<StressTechniqueDocument> {
+    const filter: FilterQuery<StressTechniqueDocument> = {};
+    const { type, difficulty, minDuration, maxDuration, search } = req.query;
+
+    if (type) {
+      filter.type = type;
+    }
+
+    if (difficulty) {
+      filter.difficulty = difficulty;
+    }
+
+    if (minDuration || maxDuration) {
+      filter.duration = {};
+      if (minDuration) {
+        filter.duration.$gte = Number(minDuration);
+      }
+      if (maxDuration) {
+        filter.duration.$lte = Number(maxDuration);
+      }
+    }
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search as string, $options: 'i' } },
+        { description: { $regex: search as string, $options: 'i' } }
+      ];
+    }
+
+    return filter;
+  }
+
+  // Custom methods specific to StressTechnique
+  async getByDifficulty(req: Request): Promise<StressTechniqueDocument[]> {
+    const { difficulty } = req.params;
+    if (!['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].includes(difficulty)) {
+      throw HttpError.badRequest('Invalid difficulty specified');
+    }
+
+    const techniques = await this.model
+      .find({ difficulty })
+      .sort({ duration: 1 })
+      .exec();
+
+    return techniques;
+  }
+
+  async getRecommended(req: Request): Promise<StressTechniqueDocument[]> {
+    const { userId } = req.params;
+    const userLevel = await this.getUserLevel(userId);
+    
+    const difficulty = this.mapUserLevelToDifficulty(userLevel);
+    const techniques = await this.model
+      .find({ difficulty })
+      .limit(5)
+      .sort({ rating: -1 })
+      .exec();
+
+    return techniques;
+  }
+
+  private async getUserLevel(userId: string): Promise<number> {
+    // This would typically come from a user service or progress tracking
+    // For now, return a mock implementation
+    return 2; // Mock intermediate level
+  }
+
+  private mapUserLevelToDifficulty(level: number): string {
+    if (level <= 1) return 'BEGINNER';
+    if (level <= 3) return 'INTERMEDIATE';
+    return 'ADVANCED';
   }
 } 

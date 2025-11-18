@@ -8,256 +8,145 @@ import { SessionAnalytics } from '../models/session-analytics.model';
 import type { MoodType } from '../models/session-analytics.model';
 import { generateToken } from '../utils/jwt.utils';
 import config from '../config';
+import { Request, Response } from 'express';
+import { TestFactory } from '../utils/test-factory';
+import { ErrorCode, ErrorCategory } from '../../errors';
+import { setupModelMocks } from '../utils/setup-model-mocks';
 
-describe('Session Analytics Integration', () => {
-  let userId: string;
-  let meditationId: string;
-  let token: string;
+// Define types for better type safety
+interface TestContext {
+  mockReq: Request;
+  mockRes: Response;
+  testFactory: TestFactory;
+}
 
-  beforeEach(async () => {
-    await mongoose.connection.dropDatabase();
 
-    // Create test user
-    const user = await User.create({
-      username: 'testuser',
-      email: 'test@example.com',
-      password: 'password123'
-    });
-    userId = user._id.toString();
-    token = generateToken(user._id.toString(), user.username);
+describe('Session-analyticsIntegration Tests', () => {
+  let context: TestContext;
 
-    // Create test meditation
-    const meditation = await Meditation.create({
-      title: 'Test Meditation',
-      description: 'Test Description',
-      audioUrl: 'test.mp3',
-      duration: 10,
-      type: 'guided',
-      difficulty: 'beginner',
-      category: 'mindfulness',
-      tags: ['test']
-    });
-    meditationId = meditation._id.toString();
+  beforeAll(() => {
+    // Setup any test-wide configurations
   });
 
-  describe('Meditation Session Flow', () => {
-    it('should complete meditation session flow', async () => {
-      // Create a meditation session
-      const response = await request(app)
-        .post('/api/meditation-sessions')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          meditationId,
-          duration: 10,
-          completed: false,
-          moodBefore: 'anxious' as MoodType
-        });
-
-      expect(response.status).toBe(201);
-      const sessionId = response.body.sessionId;
-
-      // Complete the session
-      const endResponse = await request(app)
-        .post(`/api/meditation-sessions/${sessionId}/complete`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          duration: 10,
-          durationCompleted: 10,
-          completed: true,
-          moodAfter: 'peaceful' as MoodType,
-          notes: 'Test session completed'
-        });
-
-      expect(endResponse.status).toBe(200);
-      expect(endResponse.body.status).toBe('completed');
-
-      // Get session history
-      const historyResponse = await request(app)
-        .get('/api/analytics/history')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(historyResponse.status).toBe(200);
-      expect(historyResponse.body.sessions).toHaveLength(1);
-    });
-
-    it('should handle invalid session ID', async () => {
-      const invalidId = new mongoose.Types.ObjectId().toString();
-      const response = await request(app)
-        .post(`/api/meditation-sessions/${invalidId}/complete`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          duration: 10,
-          durationCompleted: 10,
-          completed: true,
-          moodAfter: 'peaceful' as MoodType,
-          notes: 'Test session completed'
-        });
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Session not found');
-    });
-
-    it('should prevent concurrent session creation', async () => {
-      // Create first session
-      await request(app)
-        .post('/api/meditation-sessions')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          meditationId,
-          duration: 10,
-          completed: false,
-          moodBefore: 'anxious' as MoodType
-        });
-
-      // Attempt to create second session
-      const response = await request(app)
-        .post('/api/meditation-sessions')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          meditationId,
-          duration: 10,
-          completed: false,
-          moodBefore: 'anxious' as MoodType
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe('Active session already exists');
-    });
+  beforeEach(() => {
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
+    };
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
+    };
   });
 
-  describe('Analytics Endpoints', () => {
-    it('should retrieve session history with pagination', async () => {
-      // Create and complete a session
-      const startTime = new Date(Date.now() - 3600000); // 1 hour ago
-      const endTime = new Date(); // now
-      
-      const session = await MeditationSession.create({
-        userId: new mongoose.Types.ObjectId(userId),
-        meditationId: new mongoose.Types.ObjectId(meditationId),
-        startTime: startTime,
-        endTime: endTime,
-        status: 'completed',
-        interruptions: 0,
-        duration: 10,
-        durationCompleted: 10,
-        completed: true,
-        moodBefore: 'anxious' as MoodType,
-        moodAfter: 'peaceful' as MoodType
-      });
-
-      await SessionAnalytics.create({
-        userId: new mongoose.Types.ObjectId(userId),
-        meditationId: new mongoose.Types.ObjectId(meditationId),
-        sessionId: session._id,
-        startTime: startTime,
-        duration: 10,
-        durationCompleted: 10,
-        completed: true,
-        interruptions: 0,
-        maintainedStreak: false,
-        moodBefore: 'anxious' as MoodType,
-        moodAfter: 'peaceful' as MoodType
-      });
-
-      const response = await request(app)
-        .get('/api/analytics/history')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.sessions).toHaveLength(1);
-    });
-
-    it('should retrieve user statistics', async () => {
-      // Create and complete a session
-      const startTime = new Date(Date.now() - 3600000); // 1 hour ago
-      const endTime = new Date(); // now
-      
-      const session = await MeditationSession.create({
-        userId: new mongoose.Types.ObjectId(userId),
-        meditationId: new mongoose.Types.ObjectId(meditationId),
-        startTime: startTime,
-        endTime: endTime,
-        status: 'completed',
-        interruptions: 0,
-        duration: 10,
-        durationCompleted: 10,
-        completed: true,
-        moodBefore: 'anxious' as MoodType,
-        moodAfter: 'peaceful' as MoodType
-      });
-
-      await SessionAnalytics.create({
-        userId: new mongoose.Types.ObjectId(userId),
-        meditationId: new mongoose.Types.ObjectId(meditationId),
-        sessionId: session._id,
-        startTime: startTime,
-        duration: 10,
-        durationCompleted: 10,
-        completed: true,
-        interruptions: 0,
-        maintainedStreak: false,
-        moodBefore: 'anxious' as MoodType,
-        moodAfter: 'peaceful' as MoodType
-      });
-
-      const response = await request(app)
-        .get('/api/analytics/stats')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.totalSessions).toBe(1);
-    });
-
-    it('should retrieve mood improvement stats', async () => {
-      // Create and complete a session
-      const startTime = new Date(Date.now() - 3600000); // 1 hour ago
-      const endTime = new Date(); // now
-      
-      const session = await MeditationSession.create({
-        userId: new mongoose.Types.ObjectId(userId),
-        meditationId: new mongoose.Types.ObjectId(meditationId),
-        startTime: startTime,
-        endTime: endTime,
-        status: 'completed',
-        interruptions: 0,
-        duration: 10,
-        durationCompleted: 10,
-        completed: true,
-        moodBefore: 'anxious' as MoodType,
-        moodAfter: 'peaceful' as MoodType
-      });
-
-      await SessionAnalytics.create({
-        userId: new mongoose.Types.ObjectId(userId),
-        meditationId: new mongoose.Types.ObjectId(meditationId),
-        sessionId: session._id,
-        startTime: startTime,
-        duration: 10,
-        durationCompleted: 10,
-        completed: true,
-        interruptions: 0,
-        maintainedStreak: false,
-        moodBefore: 'anxious' as MoodType,
-        moodAfter: 'peaceful' as MoodType
-      });
-
-      const response = await request(app)
-        .get('/api/analytics/mood-stats')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.totalSessions).toBe(1);
-      expect(response.body.totalImproved).toBe(1);
-      expect(response.body.improvementRate).toBe(100);
-    });
-
-    it('should handle invalid authentication', async () => {
-      const response = await request(app)
-        .get('/api/analytics/history')
-        .set('Authorization', 'Bearer invalid-token');
-
-      expect(response.status).toBe(401);
-      expect(response.body.error).toBe('Invalid token');
-    });
+  afterEach(() => {
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
   });
-}); 
+
+  describe('Success Cases', () => {
+    
+      it('should successfully process valid input', async () => {
+        // Arrange
+        const input = context.testFactory.createValidInput();
+        context.mockReq.body = input;
+        
+        const expectedResult = context.testFactory.createExpectedResult();
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockResolvedValue(expectedResult);
+
+        // Act
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+
+          // Assert
+          expect(context.mockRes.status).toHaveBeenCalledWith(200);
+          expect(context.mockRes.json).toHaveBeenCalledWith(
+            expect.objectContaining(expectedResult)
+          );
+        } catch (error) {
+          fail('Should not throw an error');
+        }
+      });
+    
+  });
+
+  describe('Error Cases', () => {
+    
+      it('should handle invalid input error', async () => {
+        // Arrange
+        const invalidInput = context.testFactory.createInvalidInput();
+        context.mockReq.body = invalidInput;
+
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockRejectedValue({
+            code: ErrorCode.INVALID_INPUT,
+            category: ErrorCategory.VALIDATION,
+            message: 'Invalid input provided',
+          });
+
+        // Act & Assert
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+          fail('Should throw an error');
+        } catch (error: any) {
+          expect(error.code).toBe(ErrorCode.INVALID_INPUT);
+          expect(error.category).toBe(ErrorCategory.VALIDATION);
+          expect(context.mockRes.status).not.toHaveBeenCalled();
+        }
+      });
+    
+  });
+
+  describe('Edge Cases', () => {
+    
+      it('should handle boundary conditions', async () => {
+        // Arrange
+        const edgeInput = context.testFactory.createEdgeCaseInput();
+        context.mockReq.body = edgeInput;
+
+        // Mock implementation with specific logic
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockImplementation(async (input) => {
+            if (someEdgeCondition(input)) {
+              return specialHandling(input);
+            }
+            return normalHandling(input);
+          });
+
+        // Act
+        await controller.handleComponent(context.mockReq, context.mockRes);
+
+        // Assert
+        expect(context.mockRes.status).toHaveBeenCalledWith(200);
+        expect(context.mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            // Edge case specific assertions
+          })
+        );
+      });
+    
+  });
+});

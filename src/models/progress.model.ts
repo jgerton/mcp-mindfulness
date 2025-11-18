@@ -1,8 +1,8 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IProgress extends Document {
-  userId: string;
-  meditationId: string;
+  userId: Types.ObjectId;
+  meditationId: Types.ObjectId;
   duration: number; // actual duration in minutes
   completed: boolean;
   mood?: 'very-negative' | 'negative' | 'neutral' | 'positive' | 'very-positive';

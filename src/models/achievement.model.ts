@@ -1,12 +1,44 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 /**
+ * Achievement categories
+ */
+export enum AchievementCategory {
+  MEDITATION = 'meditation',
+  STREAK = 'streak',
+  SOCIAL = 'social',
+  MILESTONE = 'milestone',
+  CHALLENGE = 'challenge',
+  WELLNESS = 'wellness',
+  JOURNAL = 'journal',
+  TIME = 'time',
+  DURATION = 'duration',
+  SPECIAL = 'special'
+}
+
+/**
+ * Achievement types
+ */
+export enum AchievementType {
+  TOTAL_SESSIONS = 'total_sessions',
+  TOTAL_TIME = 'total_time',
+  LONGEST_SESSION = 'longest_session',
+  LONGEST_STREAK = 'longest_streak',
+  CURRENT_STREAK = 'current_streak',
+  COMPLETED_CHALLENGES = 'completed_challenges',
+  BRONZE = 'bronze',
+  SILVER = 'silver',
+  GOLD = 'gold',
+  STREAK = 'streak'
+}
+
+/**
  * Interface representing an Achievement document in MongoDB
  */
 export interface IAchievement extends Document {
   name: string;
   description: string;
-  category: 'time' | 'duration' | 'streak' | 'milestone' | 'special';
+  category: string | AchievementCategory;
   criteria: {
     type: string;
     value: any;
@@ -18,7 +50,7 @@ export interface IAchievement extends Document {
   target?: number;
   completed?: boolean;
   completedAt?: Date;
-  type?: string;
+  type?: string | AchievementType;
   userId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -32,7 +64,7 @@ export interface IAchievementDocument extends mongoose.Document, IAchievement {
   target: number;
   completed: boolean;
   completedAt?: Date;
-  type: string;
+  type: string | AchievementType;
   userId: mongoose.Types.ObjectId;
 }
 

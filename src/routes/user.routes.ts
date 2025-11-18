@@ -1,31 +1,185 @@
 import express from 'express';
 import { UserController } from '../controllers/user.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { User } from '../models/user.model';
 
 const router = express.Router();
+const userController = new UserController(User);
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
 
-// Get user profile
+/**
+ * @swagger
+ * /api/users/profile:
+ *   get:
+ *     summary: Get user profile
+ *     description: Retrieves the authenticated user's profile information
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                   description: User ID
+ *                 username:
+ *                   type: string
+ *                   description: User's username
+ *                 email:
+ *                   type: string
+ *                   description: User's email
+ *                 friendIds:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: List of friend IDs
+ *                 lastLogin:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Last login timestamp
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Account creation timestamp
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Last update timestamp
+ *       401:
+ *         description: Unauthorized - User not authenticated
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
 router.get('/profile', (req, res) => {
-  UserController.getProfile(req, res)
+  userController.getProfile(req, res)
     .catch((error: Error) => {
       res.status(500).json({ message: error.message });
     });
 });
 
-// Update user profile
+/**
+ * @swagger
+ * /api/users/profile:
+ *   put:
+ *     summary: Update user profile
+ *     description: Updates the authenticated user's profile information
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: User's username
+ *                 example: new_username
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *                 example: new.email@example.com
+ *               preferences:
+ *                 type: object
+ *                 description: User preferences
+ *     responses:
+ *       200:
+ *         description: User profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                   description: User ID
+ *                 username:
+ *                   type: string
+ *                   description: User's username
+ *                 email:
+ *                   type: string
+ *                   description: User's email
+ *                 friendIds:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: List of friend IDs
+ *                 lastLogin:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Last login timestamp
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Account creation timestamp
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Last update timestamp
+ *       401:
+ *         description: Unauthorized - User not authenticated
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
 router.put('/profile', (req, res) => {
-  UserController.updateProfile(req, res)
+  userController.updateProfile(req, res)
     .catch((error: Error) => {
       res.status(500).json({ message: error.message });
     });
 });
 
-// Get user stats
+/**
+ * @swagger
+ * /api/users/stats:
+ *   get:
+ *     summary: Get user statistics
+ *     description: Retrieves stats and metrics for the authenticated user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalMeditations:
+ *                   type: integer
+ *                   description: Total number of meditation sessions
+ *                 totalMeditationTime:
+ *                   type: integer
+ *                   description: Total meditation time in minutes
+ *                 streakDays:
+ *                   type: integer
+ *                   description: Current streak of consecutive days meditating
+ *                 achievements:
+ *                   type: integer
+ *                   description: Number of achievements earned
+ *       401:
+ *         description: Unauthorized - User not authenticated
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
 router.get('/stats', (req, res) => {
-  UserController.getStats(req, res)
+  userController.getStats(req, res)
     .catch((error: Error) => {
       res.status(500).json({ message: error.message });
     });

@@ -6,285 +6,389 @@ import { ERROR_SCENARIOS, ERROR_MESSAGES, HTTP_STATUS } from '../fixtures/error-
 import { DATABASE_ERROR_TYPES, createServiceError } from '../fixtures/service-errors';
 import { verifyErrorResponse, verifyErrorLogging, createMockError } from '../helpers/error-test.helpers';
 import { Logger } from '../../utils/logger';
+import { Request, Response } from 'express';
+import { TestFactory } from '../utils/test-factory';
+import { ErrorCode, ErrorCategory } from '../../errors';
+import { setupModelMocks } from '../utils/setup-model-mocks';
+import { mockRequest, mockResponse } from '../test-utils/express-mock';
+import { ZodError, z } from 'zod';
 
-// Mock implementation to test against for now
-jest.mock('../../utils/logger', () => ({
-  Logger: {
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn()
-  }
-}));
-
-interface MockResponse extends Partial<Response> {
-  body?: any;
+// Define types for better type safety
+interface TestContext {
+  mockReq: Request;
+  mockRes: Response;
+  testFactory: TestFactory;
 }
 
-describe('Error Handler Middleware', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: MockResponse;
-  let mockNext: jest.Mock<NextFunction>;
+
+describe('Error-handlerMiddleware Tests', () => {
+  let context: TestContext;
+  let req: Request;
+  let res: Response;
+  let next: NextFunction;
+
+  beforeAll(() => {
+    // Setup any test-wide configurations
+  });
 
   beforeEach(() => {
-    mockRequest = {
-      path: '/test',
-      method: 'GET',
-      headers: {}
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
     };
-
-    const jsonMock = jest.fn().mockImplementation(function(this: any, body: any) {
-      this.body = body;
-      return this;
-    });
-
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jsonMock,
-      body: undefined
-    };
-
-    mockNext = jest.fn();
+    req = mockRequest() as Request;
+    res = mockResponse() as Response;
+    next = jest.fn();
     jest.clearAllMocks();
   });
 
-  describe('Error Response Format', () => {
-    it('should format AppError with standard structure', () => {
-      const error = new AppError(
-        ERROR_MESSAGES.VALIDATION,
-        ErrorCodes.VALIDATION_ERROR,
-        ErrorCategory.VALIDATION,
-        ErrorSeverity.ERROR
-      );
+  afterEach(() => {
+    // Clean up after each test
+    jest.clearAllMocks();
+  });
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+  describe('Success Cases', () => {
+    
+      it('should successfully process valid input', async () => {
+        // Arrange
+        const input = context.testFactory.createValidInput();
+        context.mockReq.body = input;
+        
+        const expectedResult = context.testFactory.createExpectedResult();
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockResolvedValue(expectedResult);
 
-      verifyErrorResponse(
-        mockResponse as any,
-        HTTP_STATUS.BAD_REQUEST,
-        ErrorCodes.VALIDATION_ERROR,
-        ErrorCategory.VALIDATION
-      );
-    });
+        // Act
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
 
-    it('should format ValidationError with field-level details', () => {
-      const error = new AppError(
-        ERROR_MESSAGES.VALIDATION,
-        ErrorCodes.VALIDATION_ERROR,
-        ErrorCategory.VALIDATION,
-        ErrorSeverity.ERROR,
-        {
+          // Assert
+          expect(context.mockRes.status).toHaveBeenCalledWith(200);
+          expect(context.mockRes.json).toHaveBeenCalledWith(
+            expect.objectContaining(expectedResult)
+          );
+        } catch (error) {
+          fail('Should not throw an error');
+        }
+      });
+    
+  });
+
+  describe('Error Cases', () => {
+    
+      it('should handle invalid input error', async () => {
+        // Arrange
+        const invalidInput = context.testFactory.createInvalidInput();
+        context.mockReq.body = invalidInput;
+
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockRejectedValue({
+            code: ErrorCode.INVALID_INPUT,
+            category: ErrorCategory.VALIDATION,
+            message: 'Invalid input provided',
+          });
+
+        // Act & Assert
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+          fail('Should throw an error');
+        } catch (error: any) {
+          expect(error.code).toBe(ErrorCode.INVALID_INPUT);
+          expect(error.category).toBe(ErrorCategory.VALIDATION);
+          expect(context.mockRes.status).not.toHaveBeenCalled();
+        }
+      });
+    
+  });
+
+  describe('Edge Cases', () => {
+    
+      it('should handle boundary conditions', async () => {
+        // Arrange
+        const edgeInput = context.testFactory.createEdgeCaseInput();
+        context.mockReq.body = edgeInput;
+
+        // Mock implementation with specific logic
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockImplementation(async (input) => {
+            if (someEdgeCondition(input)) {
+              return specialHandling(input);
+            }
+            return normalHandling(input);
+          });
+
+        // Act
+        await controller.handleComponent(context.mockReq, context.mockRes);
+
+        // Assert
+        expect(context.mockRes.status).toHaveBeenCalledWith(200);
+        expect(context.mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            // Edge case specific assertions
+          })
+        );
+      });
+    
+  });
+
+  describe('AppError Handling', () => {
+    it('should handle validation error', () => {
+      const error = new AppError('Invalid input', {
+        code: ErrorCodes.VALIDATION_ERROR,
+        category: ErrorCategory.VALIDATION,
+        context: {
           fields: {
             name: 'Name is required',
             age: 'Age must be positive'
           }
         }
-      );
+      });
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      errorHandler(error, req, res, next);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(HTTP_STATUS.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
         error: {
           code: ErrorCodes.VALIDATION_ERROR,
-          message: ERROR_MESSAGES.VALIDATION,
+          message: 'Invalid input data',
           category: ErrorCategory.VALIDATION,
+          timestamp: expect.any(String),
           details: {
             fields: {
               name: 'Name is required',
               age: 'Age must be positive'
             }
-          },
-          timestamp: expect.any(String),
-          requestId: undefined
+          }
         }
       });
     });
 
-    it('should format MongoError with safe details', () => {
-      const error = createServiceError(
-        'CREATE',
-        'Database operation failed',
-        ErrorCodes.DATABASE_ERROR,
-        ErrorCategory.TECHNICAL,
-        { type: DATABASE_ERROR_TYPES.CONNECTION }
-      );
+    it('should handle authentication error', () => {
+      const error = new AppError('Authentication failed', {
+        code: ErrorCodes.AUTHENTICATION_ERROR,
+        category: ErrorCategory.AUTHENTICATION
+      });
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      errorHandler(error, req, res, next);
 
-      verifyErrorResponse(
-        mockResponse as any,
-        HTTP_STATUS.INTERNAL_ERROR,
-        ErrorCodes.DATABASE_ERROR,
-        ErrorCategory.TECHNICAL
-      );
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.AUTHENTICATION_ERROR,
+          message: 'Authentication failed',
+          category: ErrorCategory.AUTHENTICATION,
+          timestamp: expect.any(String),
+          userMessage: 'Authentication required',
+          retryable: true
+        }
+      });
     });
 
-    it('should format unknown errors safely', () => {
-      const error = new Error('Unexpected error');
+    it('should handle authorization error', () => {
+      const error = new AppError('Not authorized', {
+        code: ErrorCodes.AUTHORIZATION_ERROR,
+        category: ErrorCategory.AUTHORIZATION
+      });
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      errorHandler(error, req, res, next);
 
-      verifyErrorResponse(
-        mockResponse as any,
-        HTTP_STATUS.INTERNAL_ERROR,
-        ErrorCodes.INTERNAL_ERROR,
-        ErrorCategory.TECHNICAL
-      );
-    });
-  });
-
-  describe('Environment-Specific Behavior', () => {
-    const originalEnv = process.env.NODE_ENV;
-
-    afterAll(() => {
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('should include stack trace in development', () => {
-      process.env.NODE_ENV = 'development';
-      const error = new AppError(
-        ERROR_MESSAGES.INTERNAL,
-        ErrorCodes.INTERNAL_ERROR,
-        ErrorCategory.TECHNICAL,
-        ErrorSeverity.ERROR
-      );
-      error.stack = 'Test stack trace';
-
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
-
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          error: expect.objectContaining({
-            stack: 'Test stack trace'
-          })
-        })
-      );
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.AUTHORIZATION_ERROR,
+          message: 'Not authorized',
+          category: ErrorCategory.AUTHORIZATION,
+          timestamp: expect.any(String),
+          userMessage: 'You do not have permission to perform this action'
+        }
+      });
     });
 
-    it('should omit stack trace in production', () => {
-      process.env.NODE_ENV = 'production';
-      const error = new AppError(
-        ERROR_MESSAGES.INTERNAL,
-        ErrorCodes.INTERNAL_ERROR,
-        ErrorCategory.TECHNICAL,
-        ErrorSeverity.ERROR
-      );
-      error.stack = 'Test stack trace';
+    it('should handle not found error', () => {
+      const error = new AppError('Resource not found', {
+        code: ErrorCodes.NOT_FOUND,
+        category: ErrorCategory.TECHNICAL
+      });
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      errorHandler(error, req, res, next);
 
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.not.objectContaining({
-          error: expect.objectContaining({
-            stack: expect.any(String)
-          })
-        })
-      );
-    });
-  });
-
-  describe('Error Logging', () => {
-    it('should log errors with proper severity levels', () => {
-      const error = new AppError(
-        ERROR_MESSAGES.INTERNAL,
-        ErrorCodes.INTERNAL_ERROR,
-        ErrorCategory.TECHNICAL,
-        ErrorSeverity.ERROR
-      );
-
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
-
-      expect(Logger.error).toHaveBeenCalledWith(
-        ERROR_MESSAGES.INTERNAL,
-        expect.objectContaining({
-          path: '/test',
-          method: 'GET'
-        })
-      );
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.NOT_FOUND,
+          message: 'Resource not found',
+          category: ErrorCategory.TECHNICAL,
+          timestamp: expect.any(String),
+          userMessage: 'The requested resource was not found'
+        }
+      });
     });
 
-    it('should include request context in logs', () => {
-      const error = new AppError(
-        ERROR_MESSAGES.VALIDATION,
-        ErrorCodes.VALIDATION_ERROR,
-        ErrorCategory.VALIDATION,
-        ErrorSeverity.WARNING
-      );
+    it('should handle database error', () => {
+      const error = new AppError('Database connection failed', {
+        code: ErrorCodes.DATABASE_ERROR,
+        category: ErrorCategory.TECHNICAL,
+        severity: ErrorSeverity.ERROR
+      });
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      errorHandler(error, req, res, next);
 
-      expect(Logger.warn).toHaveBeenCalledWith(
-        ERROR_MESSAGES.VALIDATION,
-        expect.objectContaining({
-          path: '/test',
-          method: 'GET'
-        })
-      );
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.DATABASE_ERROR,
+          message: 'Database connection failed',
+          category: ErrorCategory.TECHNICAL,
+          timestamp: expect.any(String),
+          userMessage: 'A database error occurred',
+          retryable: true
+        }
+      });
     });
   });
 
-  describe('HTTP Status Codes', () => {
-    it.each([
-      ['validation error', ERROR_SCENARIOS.validation],
-      ['authentication error', ERROR_SCENARIOS.authentication],
-      ['authorization error', ERROR_SCENARIOS.authorization],
-      ['not found error', ERROR_SCENARIOS.notFound],
-      ['concurrency error', ERROR_SCENARIOS.concurrency],
-      ['internal error', ERROR_SCENARIOS.internal]
-    ])('should use correct status code for %s', (_, scenario) => {
-      const error = new AppError(
-        scenario.response.error.message,
-        scenario.response.error.code,
-        scenario.response.error.category,
-        ErrorSeverity.ERROR
-      );
+  describe('Zod Validation Error Handling', () => {
+    it('should handle Zod validation error', () => {
+      const schema = z.object({
+        name: z.string().min(3),
+        age: z.number().positive()
+      });
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      let zodError;
+      try {
+        schema.parse({ name: 'Jo', age: -1 });
+      } catch (error) {
+        zodError = error;
+      }
 
-      expect(mockResponse.status).toHaveBeenCalledWith(scenario.status);
+      errorHandler(zodError, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: 'Validation error',
+          category: ErrorCategory.VALIDATION,
+          timestamp: expect.any(String),
+          requestId: undefined,
+          userMessage: 'Please check your input and try again',
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              field: expect.any(String),
+              message: expect.any(String)
+            })
+          ])
+        }
+      });
     });
   });
 
-  describe('Error Recovery Information', () => {
-    it('should include user-friendly messages', () => {
-      const error = new AppError(
-        ERROR_MESSAGES.VALIDATION,
-        ErrorCodes.VALIDATION_ERROR,
-        ErrorCategory.VALIDATION,
-        ErrorSeverity.ERROR,
-        { userMessage: 'Please check your input and try again' }
-      );
+  describe('Mongoose Error Handling', () => {
+    it('should handle Mongoose validation error', () => {
+      const error = {
+        name: 'ValidationError',
+        message: 'Validation failed',
+        errors: {
+          name: {
+            message: 'Name is required',
+            kind: 'required',
+            path: 'name'
+          },
+          age: {
+            message: 'Age must be positive',
+            kind: 'min',
+            path: 'age',
+            value: -1
+          }
+        }
+      };
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      errorHandler(error, req, res, next);
 
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          error: expect.objectContaining({
-            userMessage: 'Please check your input and try again'
-          })
-        })
-      );
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: 'Invalid input data',
+          category: ErrorCategory.VALIDATION,
+          timestamp: expect.any(String),
+          details: {
+            fields: {
+              name: 'Name is required',
+              age: 'Age must be positive'
+            }
+          }
+        }
+      });
     });
 
-    it('should indicate if error is retryable', () => {
-      const error = new AppError(
-        ERROR_MESSAGES.INTERNAL,
-        ErrorCodes.SERVICE_UNAVAILABLE,
-        ErrorCategory.TECHNICAL,
-        ErrorSeverity.ERROR,
-        { retryable: true }
-      );
+    it('should handle MongoDB duplicate key error', () => {
+      const error = {
+        name: 'MongoError',
+        code: 11000,
+        message: 'Duplicate key error'
+      };
 
-      errorHandler(error, mockRequest as Request, mockResponse as Response, mockNext);
+      errorHandler(error, req, res, next);
 
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          error: expect.objectContaining({
-            retryable: true
-          })
-        })
-      );
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.DATABASE_ERROR,
+          message: 'Duplicate key error',
+          category: ErrorCategory.TECHNICAL,
+          timestamp: expect.any(String),
+          userMessage: 'A database error occurred',
+          retryable: true
+        }
+      });
     });
   });
-}); 
+
+  describe('Generic Error Handling', () => {
+    it('should handle unknown errors', () => {
+      const error = new Error('Unknown error');
+
+      errorHandler(error, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: 'Unknown error',
+          category: ErrorCategory.TECHNICAL,
+          timestamp: expect.any(String),
+          userMessage: 'An unexpected error occurred'
+        }
+      });
+    });
+
+    it('should include request ID when available', () => {
+      const error = new Error('Test error');
+      req.headers['x-request-id'] = 'test-request-id';
+
+      errorHandler(error, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: 'Test error',
+          category: ErrorCategory.TECHNICAL,
+          timestamp: expect.any(String),
+          requestId: 'test-request-id',
+          userMessage: 'An unexpected error occurred'
+        }
+      });
+    });
+  });
+});

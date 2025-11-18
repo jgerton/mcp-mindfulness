@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { PMRController } from '../controllers/pmr.controller';
-import { authenticateUser } from '../middleware/auth.middleware';
+import { authenticateToken } from '../middleware/auth.middleware';
 import { validateRequest } from '../middleware/validation.middleware';
 import { z } from 'zod';
 
 const router = Router();
 
 // Apply authentication middleware to all routes
-router.use(authenticateUser);
+router.use(authenticateToken);
 
 // Validation schemas
 const startSessionSchema = {

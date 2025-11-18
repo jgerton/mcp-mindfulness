@@ -1,56 +1,59 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt.utils';
+import { Document } from 'mongoose';
+import { verifyToken } from '../utils/jwt';
 import { User } from '../models/user.model';
+import { HttpError } from '../errors/http-error';
+import { ErrorCodes, ErrorCategory } from '../utils/error-codes';
 import config from '../config';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: { _id: string; username: string };
+      user?: {
+        _id: string;
+        username: string;
+      };
     }
   }
 }
 
-export const authenticateToken = async (
+export async function authenticateToken(
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<void> => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    res.status(401).json({ error: 'No token provided' });
-    return;
-  }
-
-  const token = authHeader.split(' ')[1];
-  if (!token) {
-    res.status(401).json({ error: 'No token provided' });
-    return;
-  }
-
+): Promise<void> {
   try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(' ')[1];
+
+    if (!token) {
+      throw new HttpError(401, 'No token provided', {
+        code: ErrorCodes.AUTHENTICATION_ERROR,
+        category: ErrorCategory.AUTHENTICATION
+      });
+    }
+
     const decoded = verifyToken(token);
-    req.user = { _id: decoded._id, username: decoded.username };
-    
-    if (process.env.NODE_ENV === 'test') {
-      next();
-      return;
-    }
+    const user = await User.findById(decoded.userId);
 
-    const user = await User.findById(decoded._id);
     if (!user) {
-      res.status(401).json({ error: 'User not found' });
-      return;
+      throw new HttpError(401, 'Invalid token', {
+        code: ErrorCodes.AUTHENTICATION_ERROR,
+        category: ErrorCategory.AUTHENTICATION
+      });
     }
 
-    req.user = { _id: user._id.toString(), username: user.username };
+    // Update last login
+    await User.findByIdAndUpdate(decoded.userId, {
+      lastLogin: new Date()
+    });
+
+    req.user = { _id: (user as Document).id, username: user.username || '' };
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    res.status(401).json({ error: 'Invalid token' });
-    return;
+    next(error);
   }
-}; 
+}
 
 // Export alias for backward compatibility
 export const authenticateUser = authenticateToken; 

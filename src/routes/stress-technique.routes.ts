@@ -1,7 +1,7 @@
 import express from 'express';
 import { StressTechniqueController } from '../controllers/stress-technique.controller';
-import { authenticate } from '../middleware/auth.middleware';
-import { validate } from '../middleware/validation.middleware';
+import { authenticateUser } from '../middleware/auth.middleware';
+import { validateRequest } from '../middleware/validation.middleware';
 import { stressTechniqueSchema } from '../schemas/stress-technique.schema';
 
 const router = express.Router();
@@ -144,7 +144,7 @@ router.get('/search', StressTechniqueController.searchTechniques);
  *       500:
  *         description: Server error
  */
-router.get('/recommendations', authenticate, StressTechniqueController.getRecommendedTechniques);
+router.get('/recommendations', authenticateUser, StressTechniqueController.getRecommendedTechniques);
 
 /**
  * @swagger
@@ -170,7 +170,7 @@ router.get('/recommendations', authenticate, StressTechniqueController.getRecomm
  *       500:
  *         description: Server error
  */
-router.post('/', authenticate, validate(stressTechniqueSchema), StressTechniqueController.createTechnique);
+router.post('/', authenticateUser, validateRequest({ body: stressTechniqueSchema }), StressTechniqueController.createTechnique);
 
 /**
  * @swagger
@@ -205,7 +205,7 @@ router.post('/', authenticate, validate(stressTechniqueSchema), StressTechniqueC
  *       500:
  *         description: Server error
  */
-router.put('/:id', authenticate, validate(stressTechniqueSchema), StressTechniqueController.updateTechnique);
+router.put('/:id', authenticateUser, validateRequest({ body: stressTechniqueSchema }), StressTechniqueController.updateTechnique);
 
 /**
  * @swagger
@@ -232,6 +232,6 @@ router.put('/:id', authenticate, validate(stressTechniqueSchema), StressTechniqu
  *       500:
  *         description: Server error
  */
-router.delete('/:id', authenticate, StressTechniqueController.deleteTechnique);
+router.delete('/:id', authenticateUser, StressTechniqueController.deleteTechnique);
 
 export default router; 

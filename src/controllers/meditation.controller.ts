@@ -138,6 +138,18 @@ export class MeditationController {
   // Update a meditation
   static async updateMeditation(req: Request<{ id: string }>, res: Response) {
     try {
+      // Check for empty request body
+      if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({ message: 'No update data provided' });
+      }
+
+      // Check for invalid fields
+      const allowedFields = ['title', 'description', 'duration', 'type', 'audioUrl', 'category', 'difficulty', 'tags', 'isActive'];
+      const invalidFields = Object.keys(req.body).filter(field => !allowedFields.includes(field));
+      if (invalidFields.length > 0) {
+        return res.status(400).json({ message: 'Invalid update fields' });
+      }
+
       const meditation = await MeditationService.updateMeditation(req.params.id, req.body);
       if (!meditation) {
         return res.status(404).json({ message: 'Meditation not found' });

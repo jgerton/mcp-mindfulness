@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const test_setup_1 = require("../utils/test-setup");
 /**
@@ -27,7 +36,7 @@ describe('ENTITYController', () => {
     });
     describe('CRUD Operations', () => {
         describe('create', () => {
-            it('should create entity with valid input', async () => {
+            it('should create entity with valid input', () => __awaiter(void 0, void 0, void 0, function* () {
                 // Arrange
                 const mockEntity = testFactory.createMockEntity();
                 mockReq.body = {
@@ -35,20 +44,20 @@ describe('ENTITYController', () => {
                 };
                 testFactory.setupModelMocks({ createResult: mockEntity });
                 // Act
-                await controller.create(mockReq, mockRes);
+                yield controller.create(mockReq, mockRes);
                 // Assert
                 expect(mockRes.status).toHaveBeenCalledWith(201);
                 expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
                 // Expected fields in response
                 }));
-            });
-            it('should return validation error with invalid input', async () => {
+            }));
+            it('should return validation error with invalid input', () => __awaiter(void 0, void 0, void 0, function* () {
                 // Arrange
                 mockReq.body = {
                 // Invalid or missing required fields
                 };
                 // Act
-                await controller.create(mockReq, mockRes);
+                yield controller.create(mockReq, mockRes);
                 // Assert
                 expect(mockRes.status).toHaveBeenCalledWith(400);
                 expect(mockRes.json).toHaveBeenCalledWith({
@@ -56,26 +65,26 @@ describe('ENTITYController', () => {
                     category: ErrorCategory.VALIDATION,
                     message: expect.any(String)
                 });
-            });
+            }));
         });
         describe('getById', () => {
-            it('should return entity when found', async () => {
+            it('should return entity when found', () => __awaiter(void 0, void 0, void 0, function* () {
                 // Arrange
                 const mockEntity = testFactory.createMockEntity();
                 mockReq.params = { id: mockEntity._id };
                 testFactory.setupModelMocks({ findByIdResult: mockEntity });
                 // Act
-                await controller.getById(mockReq, mockRes);
+                yield controller.getById(mockReq, mockRes);
                 // Assert
                 expect(mockRes.status).toHaveBeenCalledWith(200);
                 expect(mockRes.json).toHaveBeenCalledWith(mockEntity);
-            });
-            it('should return not found error when entity does not exist', async () => {
+            }));
+            it('should return not found error when entity does not exist', () => __awaiter(void 0, void 0, void 0, function* () {
                 // Arrange
                 mockReq.params = { id: 'non-existent-id' };
                 testFactory.setupModelMocks({ findByIdResult: null });
                 // Act
-                await controller.getById(mockReq, mockRes);
+                yield controller.getById(mockReq, mockRes);
                 // Assert
                 expect(mockRes.status).toHaveBeenCalledWith(404);
                 expect(mockRes.json).toHaveBeenCalledWith({
@@ -83,28 +92,28 @@ describe('ENTITYController', () => {
                     category: ErrorCategory.NOT_FOUND,
                     message: expect.any(String)
                 });
-            });
+            }));
         });
         // Add other CRUD operations following the same pattern
     });
     describe('Custom Operations', () => {
         describe('customMethod', () => {
-            it('should handle successful case', async () => {
+            it('should handle successful case', () => __awaiter(void 0, void 0, void 0, function* () {
                 // Arrange
                 // Setup specific mocks and data for custom method
                 // Act
-                await controller.customMethod(mockReq, mockRes);
+                yield controller.customMethod(mockReq, mockRes);
                 // Assert
                 expect(mockRes.status).toHaveBeenCalledWith(200);
                 expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
                 // Expected response structure
                 }));
-            });
-            it('should handle error case', async () => {
+            }));
+            it('should handle error case', () => __awaiter(void 0, void 0, void 0, function* () {
                 // Arrange
                 // Setup error condition
                 // Act
-                await controller.customMethod(mockReq, mockRes);
+                yield controller.customMethod(mockReq, mockRes);
                 // Assert
                 expect(mockRes.status).toHaveBeenCalledWith( /* expected error code */);
                 expect(mockRes.json).toHaveBeenCalledWith({
@@ -112,7 +121,7 @@ describe('ENTITYController', () => {
                     category: ErrorCategory.CUSTOM,
                     message: expect.any(String)
                 });
-            });
+            }));
         });
     });
 });

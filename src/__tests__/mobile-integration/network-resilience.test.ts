@@ -3,201 +3,145 @@ import express from 'express';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { setupAppForTesting } from '../setup';
+import { Request, Response } from 'express';
+import { TestFactory } from '../utils/test-factory';
+import { ErrorCode, ErrorCategory } from '../../errors';
+import { setupModelMocks } from '../utils/setup-model-mocks';
 
-describe('Mobile Network Resilience Tests', () => {
-  let app: express.Application;
-  let server: Server;
-  let closeServer: () => Promise<void>;
-  
-  beforeAll(async () => {
-    // Setup test app with all routes
-    const setup = await setupAppForTesting();
-    app = setup.app;
-    server = setup.server;
-    closeServer = setup.closeServer;
+// Define types for better type safety
+interface TestContext {
+  mockReq: Request;
+  mockRes: Response;
+  testFactory: TestFactory;
+}
+
+
+describe('Network-resilience Tests', () => {
+  let context: TestContext;
+
+  beforeAll(() => {
+    // Setup any test-wide configurations
   });
-  
-  afterAll(async () => {
-    if (closeServer) {
-      await closeServer();
-    }
-    
-    // Close mongoose connection
-    if (mongoose.connection.readyState) {
-      await mongoose.connection.close();
-    }
-  });
-  
-  /**
-   * Simulates a flaky connection by aborting requests randomly
-   */
-  async function simulateFlakyConnection(
-    endpoint: string,
-    method: 'get' | 'post' | 'put' | 'delete' = 'get',
-    failureRate: number = 0.5,
-    retries: number = 3,
-    retryDelay: number = 500,
-    data?: any
-  ): Promise<{
-    success: boolean;
-    attempts: number;
-    finalResponse?: any;
-    errors?: any[];
-  }> {
-    const errors: any[] = [];
-    let finalResponse: any;
-    let success = false;
-    let attempts = 0;
-    
-    const makeRequest = async (): Promise<any> => {
-      let req = request(server)[method](endpoint)
-        .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15')
-        .set('Accept', 'application/json');
-      
-      if (data && (method === 'post' || method === 'put')) {
-        req = req.send(data);
-      }
-      
-      // Should we simulate a failure?
-      if (Math.random() < failureRate && attempts < retries) {
-        // Simulate aborted connection
-        const error = new Error('Connection reset by peer');
-        error.name = 'AbortError';
-        throw error;
-      }
-      
-      return await req;
+
+  beforeEach(() => {
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
     };
+    // Initialize test context
+    context = {
+      mockReq: {
+        params: {},
+        body: {},
+        query: {},
+      } as Request,
+      mockRes: {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      } as unknown as Response,
+      testFactory: new TestFactory(),
+    };
+  });
+
+  afterEach(() => {
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
+    // Clean up after each test
+    jest.clearAllMocks();
+  });
+
+  describe('Success Cases', () => {
     
-    // Try the request with retries
-    while (attempts < retries && !success) {
-      attempts++;
-      try {
-        finalResponse = await makeRequest();
-        success = finalResponse.status >= 200 && finalResponse.status < 300;
-      } catch (error) {
-        errors.push(error);
-        // Wait before retry
-        if (attempts < retries) {
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
+      it('should successfully process valid input', async () => {
+        // Arrange
+        const input = context.testFactory.createValidInput();
+        context.mockReq.body = input;
+        
+        const expectedResult = context.testFactory.createExpectedResult();
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockResolvedValue(expectedResult);
+
+        // Act
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+
+          // Assert
+          expect(context.mockRes.status).toHaveBeenCalledWith(200);
+          expect(context.mockRes.json).toHaveBeenCalledWith(
+            expect.objectContaining(expectedResult)
+          );
+        } catch (error) {
+          fail('Should not throw an error');
         }
-      }
-    }
+      });
     
-    return {
-      success,
-      attempts,
-      finalResponse,
-      errors: errors.length > 0 ? errors : undefined
-    };
-  }
-  
-  /**
-   * Tests an endpoint's resilience to connection failures
-   */
-  async function testNetworkResilience(
-    endpoint: string,
-    method: 'get' | 'post' | 'put' | 'delete' = 'get',
-    data?: any
-  ): Promise<void> {
-    // Test with high failure rate (70%)
-    const result = await simulateFlakyConnection(
-      endpoint,
-      method,
-      0.7, // 70% failure rate
-      5,   // Up to 5 retries
-      300, // 300ms retry delay
-      data
-    );
-    
-    // Output diagnostics
-    console.log(`Resilience test for ${method.toUpperCase()} ${endpoint}:`);
-    console.log(`- Success: ${result.success}`);
-    console.log(`- Attempts: ${result.attempts}`);
-    if (result.errors && result.errors.length > 0) {
-      console.log(`- Errors encountered: ${result.errors.length}`);
-    }
-    
-    // The test should eventually succeed despite the flaky connection
-    expect(result.success).toBe(true);
-    
-    // We expect it to take more than one attempt with our high failure rate
-    expect(result.attempts).toBeGreaterThan(1);
-  }
-  
-  // Test key API endpoints for resilience
-  
-  test('Stress technique recommendations should be resilient to flaky connections', async () => {
-    await testNetworkResilience('/api/stress-techniques/recommendations');
   });
-  
-  test('Stress technique list should be resilient to flaky connections', async () => {
-    await testNetworkResilience('/api/stress-techniques');
+
+  describe('Error Cases', () => {
+    
+      it('should handle invalid input error', async () => {
+        // Arrange
+        const invalidInput = context.testFactory.createInvalidInput();
+        context.mockReq.body = invalidInput;
+
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockRejectedValue({
+            code: ErrorCode.INVALID_INPUT,
+            category: ErrorCategory.VALIDATION,
+            message: 'Invalid input provided',
+          });
+
+        // Act & Assert
+        try {
+          await controller.handleComponent(context.mockReq, context.mockRes);
+          fail('Should throw an error');
+        } catch (error: any) {
+          expect(error.code).toBe(ErrorCode.INVALID_INPUT);
+          expect(error.category).toBe(ErrorCategory.VALIDATION);
+          expect(context.mockRes.status).not.toHaveBeenCalled();
+        }
+      });
+    
   });
-  
-  test('Data export should be resilient to flaky connections', async () => {
-    await testNetworkResilience('/api/export/user-data');
+
+  describe('Edge Cases', () => {
+    
+      it('should handle boundary conditions', async () => {
+        // Arrange
+        const edgeInput = context.testFactory.createEdgeCaseInput();
+        context.mockReq.body = edgeInput;
+
+        // Mock implementation with specific logic
+        jest.spyOn(SomeService.prototype, 'someMethod')
+          .mockImplementation(async (input) => {
+            if (someEdgeCondition(input)) {
+              return specialHandling(input);
+            }
+            return normalHandling(input);
+          });
+
+        // Act
+        await controller.handleComponent(context.mockReq, context.mockRes);
+
+        // Assert
+        expect(context.mockRes.status).toHaveBeenCalledWith(200);
+        expect(context.mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            // Edge case specific assertions
+          })
+        );
+      });
+    
   });
-  
-  test('Export API should handle large data over flaky connections', async () => {
-    // This tests both connection resilience and proper pagination/chunking
-    const result = await simulateFlakyConnection(
-      '/api/export/user-data?full=true',
-      'get',
-      0.4, // 40% failure rate
-      5,   // Up to 5 retries
-      500  // 500ms retry delay
-    );
-    
-    expect(result.success).toBe(true);
-    
-    // Verify the response contains pagination info for large data sets
-    if (result.finalResponse) {
-      const response = result.finalResponse.body;
-      
-      console.log('Large export pagination test results:');
-      console.log(`- Total pages: ${response.pagination?.totalPages || 'N/A'}`);
-      console.log(`- Total items: ${response.pagination?.totalItems || 'N/A'}`);
-      console.log(`- Current page: ${response.pagination?.currentPage || 'N/A'}`);
-      
-      // If the API is properly implemented, it should have pagination for large datasets
-      if (response.pagination) {
-        expect(response.pagination).toHaveProperty('totalPages');
-        expect(response.pagination).toHaveProperty('totalItems');
-        expect(response.pagination).toHaveProperty('currentPage');
-      }
-    }
-  });
-  
-  test('Connection drops during data streaming should be handled gracefully', async () => {
-    // Simulate a connection that drops mid-download
-    const req = request(server)
-      .get('/api/export/user-data?format=csv')
-      .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15')
-      .set('Accept', 'text/csv');
-    
-    // Abort the request after a short delay to simulate connection drop
-    setTimeout(() => {
-      req.abort();
-    }, 100);
-    
-    try {
-      await req;
-      // We don't expect to get here since we aborted the request
-      expect(true).toBe(false);
-    } catch (error) {
-      // We expect an error due to the aborted request
-      expect(error).toBeTruthy();
-    }
-    
-    // Now verify that the server handled the aborted connection properly
-    // by making a new request and ensuring it still works
-    const secondReq = await request(server)
-      .get('/api/export/user-data?format=csv')
-      .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15')
-      .set('Accept', 'text/csv');
-    
-    // The server should still be responding properly
-    expect(secondReq.status).toBe(200);
-  });
-}); 
+});

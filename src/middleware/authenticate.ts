@@ -5,7 +5,10 @@ import { User } from '../models/user.model';
 declare global {
   namespace Express {
     interface Request {
-      user?: any;
+      user?: {
+        _id: string;
+        username: string;
+      };
     }
   }
 }
@@ -24,12 +27,15 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
     const user = await User.findById(decoded.userId).select('-password');
-    
+
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    req.user = user;
+    req.user = {
+      _id: (user._id as any).toString(),
+      username: user.username || user.email
+    };
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {

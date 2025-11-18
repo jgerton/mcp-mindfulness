@@ -2,18 +2,93 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { AchievementService } from '../services/achievement.service';
 import { Achievement, UserAchievement } from '../models/achievement.model';
+import { BaseController } from '../core/base-controller';
+import { IAchievement } from '../models/achievement.model';
+import { HttpError } from '../errors/http-error';
+import { FilterQuery } from 'mongoose';
 
 /**
  * Controller for Achievement-related API endpoints
  */
-export class AchievementController {
+export class AchievementController extends BaseController<IAchievement> {
+  constructor() {
+    super(Achievement);
+  }
+
+  protected async validateCreate(req: Request): Promise<void> {
+    const { title, description, criteria, userId } = req.body;
+
+    if (!title) {
+      throw HttpError.badRequest('Title is required');
+    }
+    if (!description) {
+      throw HttpError.badRequest('Description is required');
+    }
+    if (!criteria || !criteria.type || !criteria.target) {
+      throw HttpError.badRequest('Valid criteria with type and target is required');
+    }
+    if (!['SESSION_COUNT', 'STREAK_DAYS', 'TOTAL_MINUTES'].includes(criteria.type)) {
+      throw HttpError.badRequest('Invalid criteria type');
+    }
+    if (criteria.target <= 0) {
+      throw HttpError.badRequest('Criteria target must be positive');
+    }
+    if (!userId) {
+      throw HttpError.badRequest('User ID is required');
+    }
+  }
+
+  protected async validateUpdate(req: Request): Promise<void> {
+    const { criteria } = req.body;
+
+    if (criteria) {
+      if (!criteria.type || !criteria.target) {
+        throw HttpError.badRequest('Criteria must include both type and target');
+      }
+      if (!['SESSION_COUNT', 'STREAK_DAYS', 'TOTAL_MINUTES'].includes(criteria.type)) {
+        throw HttpError.badRequest('Invalid criteria type');
+      }
+      if (criteria.target <= 0) {
+        throw HttpError.badRequest('Criteria target must be positive');
+      }
+    }
+  }
+
+  protected buildFilterQuery(req: Request): FilterQuery<IAchievement> {
+    const filter: FilterQuery<IAchievement> = {};
+    const { userId, isCompleted, criteriaType, search } = req.query;
+
+    if (userId) {
+      filter.userId = userId;
+    }
+
+    if (isCompleted !== undefined) {
+      filter.isCompleted = isCompleted === 'true';
+    }
+
+    if (criteriaType) {
+      filter['criteria.type'] = criteriaType;
+    }
+
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search as string, $options: 'i' } },
+        { description: { $regex: search as string, $options: 'i' } }
+      ];
+    }
+
+    return filter;
+  }
+
   /**
    * Get all achievements
    * @route GET /api/achievements
    */
   public async getAllAchievements(req: Request, res: Response): Promise<void> {
     try {
-      const achievements = await Achievement.find().lean();
+      const { category } = req.query;
+      const filter = category ? { category } : {};
+      const achievements = await Achievement.find(filter).lean();
       res.status(200).json(achievements);
     } catch (error) {
       console.error('Error fetching achievements:', error);
@@ -302,5 +377,76 @@ export class AchievementController {
       console.error('Error processing user activity:', error);
       res.status(500).json({ error: 'Failed to process user activity' });
     }
+  }
+
+  // Custom methods specific to Achievement
+  async getByUser(req: Request): Promise<IAchievement[]> {
+    const { userId } = req.params;
+    if (!userId) {
+      throw HttpError.badRequest('User ID is required');
+    }
+
+    const achievements = await this.model
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return achievements;
+  }
+
+  async updateProgress(req: Request): Promise<IAchievement> {
+    const { achievementId, progress } = req.body;
+    const achievement = await Achievement.findById(achievementId);
+
+    if (!achievement) {
+      throw new HttpError(404, 'Achievement not found');
+    }
+
+    achievement.progress = progress;
+    if (achievement.target !== undefined && progress >= achievement.target && !achievement.completed) {
+      achievement.completed = true;
+      achievement.completedAt = new Date();
+    }
+
+    const updatedAchievement = await achievement.save();
+    return updatedAchievement;
+  }
+
+  async getInProgress(req: Request): Promise<IAchievement[]> {
+    const { userId } = req.params;
+    if (!userId) {
+      throw HttpError.badRequest('User ID is required');
+    }
+
+    const achievements = await this.model
+      .find({
+        userId,
+        isCompleted: false,
+        'criteria.progress': { $gt: 0 }
+      })
+      .sort({ 'criteria.progress': -1 })
+      .exec();
+
+    return achievements;
+  }
+
+  async getRecentlyCompleted(req: Request): Promise<IAchievement[]> {
+    const { userId } = req.params;
+    const { limit = 5 } = req.query;
+
+    if (!userId) {
+      throw HttpError.badRequest('User ID is required');
+    }
+
+    const achievements = await this.model
+      .find({
+        userId,
+        isCompleted: true
+      })
+      .sort({ completedAt: -1 })
+      .limit(Number(limit))
+      .exec();
+
+    return achievements;
   }
 } 

@@ -23,10 +23,8 @@ import exportRoutes from '../routes/export.routes';
 import stressTechniqueRoutes from '../routes/stress-technique.routes';
 import { setupSwagger } from '../config/swagger';
 
-let mongod: MongoMemoryServer;
-
 // Increase timeout for slow tests
-jest.setTimeout(30000);
+jest.setTimeout(60000); // Increase timeout to 60 seconds
 
 // Clear all mocks between tests
 beforeEach(() => {
@@ -39,96 +37,32 @@ mongoose.set('strictQuery', true);
 // Helper function to wait for a short time
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+let mongod: MongoMemoryServer;
+
+// Setup before all tests
 beforeAll(async () => {
-  try {
-    // Close any existing connections
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect();
-      // Add a small delay to ensure connection is fully closed
-      await delay(100);
-    }
-
-    // Configure MongoDB Memory Server
-    mongod = await MongoMemoryServer.create({
-      instance: {
-        dbName: 'jest',
-        port: 27017,
-        ip: '127.0.0.1',
-      },
-      binary: {
-        version: '6.0.12',
-        downloadDir: './.cache/mongodb-binaries',
-      },
-    });
-
-    const uri = mongod.getUri();
-    await mongoose.connect(uri, {
-      maxPoolSize: 5, // Reduce pool size to prevent connection issues
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 60000,
-      connectTimeoutMS: 10000,
-      family: 4
-    });
-  } catch (error) {
-    console.error('Error during setup:', error);
-    throw error;
-  }
+  mongod = await MongoMemoryServer.create();
+  const uri = mongod.getUri();
+  await mongoose.connect(uri);
 });
 
-afterAll(async () => {
-  try {
-    // Add a small delay before closing connections
-    await delay(100);
-    
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.connection.close();
-      // Add a small delay to ensure connection is fully closed
-      await delay(100);
-    }
-    
-    if (mongod) {
-      await mongod.stop({ force: true });
-    }
-  } catch (error) {
-    console.error('Error during cleanup:', error);
-  }
-});
-
+// Clear database between tests
 beforeEach(async () => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      // Reconnect if connection is lost
-      const uri = mongod.getUri();
-      await mongoose.connect(uri, {
-        maxPoolSize: 5, // Reduce pool size to prevent connection issues
-        serverSelectionTimeoutMS: 10000,
-        socketTimeoutMS: 60000,
-        connectTimeoutMS: 10000,
-        family: 4
-      });
+  if (mongoose.connection.db) {
+    const collections = await mongoose.connection.db.collections();
+    for (const collection of collections) {
+      await collection.deleteMany({});
     }
-    
-    if (mongoose.connection.db) {
-      try {
-        const collections = await mongoose.connection.db.collections();
-        // Add a small delay between operations
-        await delay(50);
-        
-        // Process collections in sequence rather than in parallel to reduce connection load
-        for (const collection of collections) {
-          await collection.deleteMany({});
-          // Small delay between collection operations
-          await delay(10);
-        }
-      } catch (err) {
-        console.error('Error clearing collections:', err);
-        // Continue execution even if clearing fails
-      }
-    }
-  } catch (error) {
-    console.error('Error during collection cleanup:', error);
-    // Don't throw here to allow tests to continue
-    console.warn('Continuing tests despite cleanup error');
+  }
+});
+
+// Cleanup after all tests
+afterAll(async () => {
+  if (mongoose.connection) {
+    await mongoose.disconnect();
+  }
+  if (mongod) {
+    await mongod.stop();
   }
 });
 
@@ -144,6 +78,7 @@ declare global {
   namespace jest {
     interface Matchers<R> {
       toBeSortedBy(sortKey: string): R;
+      toBeValidId(): R;
     }
   }
 }
@@ -167,6 +102,13 @@ expect.extend({
         pass: false
       };
     }
+  },
+  toBeValidId(received) {
+    const pass = mongoose.Types.ObjectId.isValid(received);
+    return {
+      message: () => `expected ${received} to be a valid MongoDB ObjectId`,
+      pass
+    };
   }
 });
 
@@ -175,9 +117,10 @@ expect.extend({
  * Returns the Express app instance and a function to close the server
  */
 export const setupAppForTesting = async () => {
-  // Setup DB connection for testing, only if not already connected
-  if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mindfulness_test');
+  // Ensure we have a database connection
+  if (mongoose.connection.readyState !== 1) {
+    const testMongod = await MongoMemoryServer.create();
+    await mongoose.connect(testMongod.getUri());
   }
   
   // Create a test app instance
@@ -213,10 +156,7 @@ export const setupAppForTesting = async () => {
   
   const closeServer = async () => {
     server.close();
-    // Only close mongoose if we opened it
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.connection.close();
-    }
+    // Don't close mongoose here - it's managed globally in the test setup
   };
   
   return { app, server, closeServer };

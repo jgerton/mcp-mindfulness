@@ -3,251 +3,233 @@ import { BreathingController } from '../../controllers/breathing.controller';
 import { BreathingService } from '../../services/breathing.service';
 import { BreathingPattern, BreathingSession } from '../../models/breathing.model';
 import mongoose from 'mongoose';
+import { TestFactory } from '../utils/test-factory';
+import { ErrorCode, ErrorCategory } from '../../errors';
+import { setupModelMocks } from '../utils/setup-model-mocks';
 
-// Mock the BreathingService
+// Define types for better type safety
+interface TestContext {
+  mockReq: Request;
+  mockRes: Response;
+  testFactory: TestFactory;
+}
+
 jest.mock('../../services/breathing.service');
 
-const mockResponse = () => {
-  const res: Partial<Response> = {
-    json: jest.fn(),
-    status: jest.fn().mockReturnThis()
-  };
-  return res as Response;
-};
-
-const mockRequest = (data: any = {}): Partial<Request> => ({
-  user: { _id: 'test-user', username: 'testuser' },
-  body: data.body || {},
-  params: data.params || {},
-  query: data.query || {},
-});
-
 describe('BreathingController', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  
+  let mockReq: Request;
+  let mockRes: Response;
+  const mockUserId = new mongoose.Types.ObjectId().toString();
+  const mockSessionId = new mongoose.Types.ObjectId().toString();
+
   beforeEach(() => {
-    mockRequest = {};
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn()
-    };
-    
+    mockReq = TestFactory.createMockRequest();
+    mockRes = TestFactory.createMockResponse();
+    jest.clearAllMocks();
+    (BreathingService.initializeDefaultPatterns as jest.Mock).mockResolvedValue(undefined);
+    (BreathingService.getPattern as jest.Mock).mockResolvedValue(null);
+    (BreathingService.startSession as jest.Mock).mockResolvedValue(TestFactory.createBreathingSession());
+    (BreathingService.completeSession as jest.Mock).mockResolvedValue(TestFactory.createBreathingSession({ endTime: new Date() }));
+    (BreathingService.getUserSessions as jest.Mock).mockResolvedValue([]);
+    (BreathingService.getEffectiveness as jest.Mock).mockResolvedValue({
+      averageStressReduction: 0,
+      totalSessions: 0,
+      mostEffectivePattern: ''
+    });
+  });
+
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
-  beforeEach(async () => {
-    if (mongoose.connection.readyState !== 0) {
-      const db = mongoose.connection.db;
-      if (db) {
-        try {
-          await db.collection('breathingpatterns').deleteMany({});
-          await db.collection('breathingsessions').deleteMany({});
-        } catch (error) {
-          // Collections might not exist, ignore error
-        }
-      }
-    }
-    await BreathingService.initializeDefaultPatterns();
-  });
-
   describe('getPatterns', () => {
-    it('should return breathing pattern when found', async () => {
-      const mockPattern = {
-        name: '4-7-8',
-        inhale: 4,
-        hold: 7,
-        exhale: 8
-      };
-      
-      mockRequest.params = { name: '4-7-8' };
-      
-      BreathingService.getPattern = jest.fn().mockResolvedValue(mockPattern);
-      BreathingService.initializeDefaultPatterns = jest.fn().mockResolvedValue(undefined);
-      
-      await BreathingController.getPatterns(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.json).toHaveBeenCalledWith(mockPattern);
+    it('should return pattern when found', async () => {
+      const mockPattern = TestFactory.createBreathingPattern();
+      (BreathingService.getPattern as jest.Mock).mockResolvedValue(mockPattern);
+
+      mockReq.params = { name: '4-7-8' };
+      await BreathingController.getPatterns(mockReq, mockRes);
+
+      expect(BreathingService.initializeDefaultPatterns).toHaveBeenCalled();
+      expect(BreathingService.getPattern).toHaveBeenCalledWith('4-7-8');
+      expect(mockRes.json).toHaveBeenCalledWith(mockPattern);
     });
 
-    it('should return null when pattern not found', async () => {
-      mockRequest.params = { name: 'non-existent-pattern' };
-      
-      BreathingService.getPattern = jest.fn().mockResolvedValue(null);
-      BreathingService.initializeDefaultPatterns = jest.fn().mockResolvedValue(undefined);
-      
-      await BreathingController.getPatterns(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Breathing pattern not found' });
+    it('should return 404 when pattern not found', async () => {
+      (BreathingService.getPattern as jest.Mock).mockResolvedValue(null);
+
+      mockReq.params = { name: 'non-existent' };
+      await BreathingController.getPatterns(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Breathing pattern not found' });
+    });
+
+    it('should handle errors gracefully', async () => {
+      (BreathingService.getPattern as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+      await BreathingController.getPatterns(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Breathing pattern not found' });
     });
   });
 
   describe('startSession', () => {
-    it('should return 500 for invalid pattern', async () => {
-      mockRequest.user = { _id: 'test-user', username: 'testuser' };
-      mockRequest.body = { patternName: 'INVALID_PATTERN' };
-      
-      BreathingService.getPattern = jest.fn().mockResolvedValue(null);
-      
-      await BreathingController.startSession(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Invalid pattern' });
+    beforeEach(() => {
+      mockReq.user = { _id: mockUserId, username: 'testuser' };
     });
 
-    it('should create new session with valid data', async () => {
-      const mockSession = {
-        _id: 'test-session-id',
-        userId: 'test-user',
-        patternName: '4-7-8',
-        startTime: new Date()
-      };
-      
-      mockRequest.user = { _id: 'test-user', username: 'testuser' };
-      mockRequest.body = { patternName: '4-7-8', stressLevelBefore: 7 };
-      
-      BreathingService.getPattern = jest.fn().mockResolvedValue({
-        name: '4-7-8',
-        inhale: 4,
-        hold: 7,
-        exhale: 8
-      });
-      BreathingService.startSession = jest.fn().mockResolvedValue(mockSession);
-      
-      await BreathingController.startSession(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.json).toHaveBeenCalledWith(mockSession);
+    it('should create new session successfully', async () => {
+      const mockSession = TestFactory.createBreathingSession();
+      (BreathingService.startSession as jest.Mock).mockResolvedValue(mockSession);
+
+      mockReq.body = { patternName: '4-7-8', stressLevelBefore: 7 };
+      await BreathingController.startSession(mockReq, mockRes);
+
+      expect(BreathingService.startSession).toHaveBeenCalledWith(
+        mockUserId,
+        '4-7-8',
+        7
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(mockSession);
     });
 
-    it('should return 401 when user not authenticated', async () => {
-      mockRequest.user = undefined;
-      mockRequest.body = { patternName: '4-7-8', stressLevelBefore: 7 };
-      
-      await BreathingController.startSession(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    it('should handle unauthorized requests', async () => {
+      mockReq.user = undefined;
+      await BreathingController.startSession(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    });
+
+    it('should handle invalid pattern errors', async () => {
+      (BreathingService.startSession as jest.Mock).mockRejectedValue(new Error('Invalid pattern'));
+
+      mockReq.body = { patternName: 'invalid' };
+      await BreathingController.startSession(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Invalid pattern' });
     });
   });
 
   describe('completeSession', () => {
-    it('should complete session with valid data', async () => {
-      const mockSession = {
-        _id: 'test-session-id',
-        userId: 'test-user',
-        patternName: '4-7-8',
-        completedCycles: 4,
-        stressLevelAfter: 3,
-        endTime: new Date()
-      };
-      
-      mockRequest.user = { _id: 'test-user', username: 'testuser' };
-      mockRequest.params = { sessionId: 'test-session-id' };
-      mockRequest.body = { completedCycles: 4, stressLevelAfter: 3 };
-      
-      // Mock mongoose.Types.ObjectId.isValid to return true
-      jest.spyOn(mongoose.Types.ObjectId, 'isValid').mockReturnValue(true);
-      
-      BreathingService.getUserSessionById = jest.fn().mockResolvedValue({
-        _id: 'test-session-id',
-        userId: {
-          toString: () => 'test-user'
-        },
-        toString: () => 'test-user'
-      });
-      BreathingService.completeSession = jest.fn().mockResolvedValue(mockSession);
-      
-      await BreathingController.completeSession(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.json).toHaveBeenCalledWith(mockSession);
+    beforeEach(() => {
+      mockReq.user = { _id: mockUserId, username: 'testuser' };
+      mockReq.params = { sessionId: mockSessionId };
     });
 
-    it('should return 500 for invalid session id', async () => {
-      mockRequest.user = { _id: 'test-user', username: 'testuser' };
-      mockRequest.params = { sessionId: 'invalid-id' };
-      mockRequest.body = { completedCycles: 4, stressLevelAfter: 3 };
-      
-      // Mock mongoose.Types.ObjectId.isValid to return false
-      jest.spyOn(mongoose.Types.ObjectId, 'isValid').mockReturnValue(false);
-      
-      await BreathingController.completeSession(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Invalid session ID' });
+    it('should complete session successfully', async () => {
+      const mockSession = TestFactory.createBreathingSession({ endTime: new Date() });
+      (BreathingService.completeSession as jest.Mock).mockResolvedValue(mockSession);
+
+      mockReq.body = { completedCycles: 4, stressLevelAfter: 3 };
+      await BreathingController.completeSession(mockReq, mockRes);
+
+      expect(BreathingService.completeSession).toHaveBeenCalledWith(
+        mockSessionId,
+        4,
+        3
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(mockSession);
+    });
+
+    it('should handle unauthorized requests', async () => {
+      mockReq.user = undefined;
+      await BreathingController.completeSession(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    });
+
+    it('should handle session not found', async () => {
+      (BreathingService.completeSession as jest.Mock).mockRejectedValue(new Error('Session not found'));
+
+      await BreathingController.completeSession(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Session not found' });
+    });
+
+    it('should handle already completed sessions', async () => {
+      (BreathingService.completeSession as jest.Mock).mockRejectedValue(new Error('Session already completed'));
+
+      await BreathingController.completeSession(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Session already completed' });
     });
   });
 
   describe('getUserSessions', () => {
-    it('should return user sessions with default limit', async () => {
+    beforeEach(() => {
+      mockReq.user = { _id: mockUserId, username: 'testuser' };
+    });
+
+    it('should return user sessions successfully', async () => {
       const mockSessions = [
-        { _id: 'session1', patternName: '4-7-8' },
-        { _id: 'session2', patternName: 'BOX_BREATHING' }
+        TestFactory.createBreathingSession(),
+        TestFactory.createBreathingSession()
       ];
-      
-      mockRequest.user = { _id: 'test-user', username: 'testuser' };
-      mockRequest.query = {};
-      
-      BreathingService.getUserSessions = jest.fn().mockResolvedValue(mockSessions);
-      
-      await BreathingController.getUserSessions(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.json).toHaveBeenCalledWith(mockSessions);
-      expect(BreathingService.getUserSessions).toHaveBeenCalledWith('test-user', 10);
+      (BreathingService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions);
+
+      await BreathingController.getUserSessions(mockReq, mockRes);
+
+      expect(BreathingService.getUserSessions).toHaveBeenCalledWith(mockUserId, 10);
+      expect(mockRes.json).toHaveBeenCalledWith(mockSessions);
+    });
+
+    it('should handle unauthorized requests', async () => {
+      mockReq.user = undefined;
+      await BreathingController.getUserSessions(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
     });
 
     it('should respect limit parameter', async () => {
-      const mockSessions = [
-        { _id: 'session1', patternName: '4-7-8' },
-        { _id: 'session2', patternName: 'BOX_BREATHING' }
-      ];
-      
-      mockRequest.user = { _id: 'test-user', username: 'testuser' };
-      mockRequest.query = { limit: '2' };
-      
-      BreathingService.getUserSessions = jest.fn().mockResolvedValue(mockSessions);
-      
-      await BreathingController.getUserSessions(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.json).toHaveBeenCalledWith(mockSessions);
-      expect(BreathingService.getUserSessions).toHaveBeenCalledWith('test-user', 2);
-    });
+      mockReq.query = { limit: '5' };
+      await BreathingController.getUserSessions(mockReq, mockRes);
 
-    it('should return 401 when user not authenticated', async () => {
-      mockRequest.user = undefined;
-      mockRequest.query = {};
-      
-      await BreathingController.getUserSessions(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+      expect(BreathingService.getUserSessions).toHaveBeenCalledWith(mockUserId, 5);
     });
   });
 
   describe('getEffectiveness', () => {
-    it('should return effectiveness metrics', async () => {
-      const mockEffectiveness = {
-        averageStressReduction: 3.5,
-        totalSessions: 10,
-        mostEffectivePattern: '4-7-8'
-      };
-      
-      mockRequest.user = { _id: 'test-user', username: 'testuser' };
-      
-      BreathingService.getEffectiveness = jest.fn().mockResolvedValue(mockEffectiveness);
-      
-      await BreathingController.getEffectiveness(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.json).toHaveBeenCalledWith(mockEffectiveness);
+    beforeEach(() => {
+      mockReq.user = { _id: mockUserId, username: 'testuser' };
     });
 
-    it('should return 401 when user not authenticated', async () => {
-      mockRequest.user = undefined;
-      
-      await BreathingController.getEffectiveness(mockRequest as Request, mockResponse as Response);
-      
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    it('should return effectiveness metrics successfully', async () => {
+      const mockEffectiveness = {
+        averageStressReduction: 4.5,
+        totalSessions: 2,
+        mostEffectivePattern: 'BOX_BREATHING'
+      };
+      (BreathingService.getEffectiveness as jest.Mock).mockResolvedValue(mockEffectiveness);
+
+      await BreathingController.getEffectiveness(mockReq, mockRes);
+
+      expect(BreathingService.getEffectiveness).toHaveBeenCalledWith(mockUserId);
+      expect(mockRes.json).toHaveBeenCalledWith(mockEffectiveness);
+    });
+
+    it('should handle unauthorized requests', async () => {
+      mockReq.user = undefined;
+      await BreathingController.getEffectiveness(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    });
+
+    it('should handle service errors gracefully', async () => {
+      (BreathingService.getEffectiveness as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+      await BreathingController.getEffectiveness(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Failed to get breathing effectiveness' });
     });
   });
-}); 
+});

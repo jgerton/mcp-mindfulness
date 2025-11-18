@@ -1,26 +1,17 @@
-import { ErrorCodes } from './error-codes';
+import { Response } from 'express';
+import { ErrorCodes, ErrorCategory } from './error-codes';
 
-export enum ErrorCategory {
-  VALIDATION = 'validation',
-  BUSINESS = 'business',
-  TECHNICAL = 'technical',
-  SECURITY = 'security',
-  INTEGRATION = 'integration'
-}
+export { ErrorCodes, ErrorCategory };
 
 export enum ErrorSeverity {
-  DEBUG = 'debug',
-  INFO = 'info',
-  WARNING = 'warning',
   ERROR = 'error',
-  CRITICAL = 'critical'
+  WARNING = 'warning',
+  INFO = 'info',
+  DEBUG = 'debug'
 }
 
 export interface ErrorContext {
-  [key: string]: unknown;
-  timestamp?: Date;
-  requestId?: string;
-  userId?: string;
+  [key: string]: any;
 }
 
 export interface ErrorRecovery {
@@ -30,124 +21,157 @@ export interface ErrorRecovery {
   documentationLink?: string;
 }
 
-export class AppError extends Error {
-  public timestamp: Date;
+export class BaseError extends Error {
+  public severity: ErrorSeverity;
+  public context?: ErrorContext;
+  public recovery?: ErrorRecovery;
+  public httpStatus: number;
 
   constructor(
-    message: string,
+    public name: string,
     public code: ErrorCodes,
-    public category: ErrorCategory,
-    public severity: ErrorSeverity = ErrorSeverity.ERROR,
-    public context: ErrorContext = {},
-    public recovery?: ErrorRecovery,
-    public httpStatus: number = 500
+    public message: string,
+    public category: ErrorCategory = ErrorCategory.INTERNAL,
+    severity: ErrorSeverity = ErrorSeverity.ERROR,
+    context?: ErrorContext,
+    recovery?: ErrorRecovery
   ) {
     super(message);
-    this.name = this.constructor.name;
-    this.timestamp = new Date();
-    Error.captureStackTrace(this, this.constructor);
+    this.severity = severity;
+    this.context = context;
+    this.recovery = recovery;
+    this.httpStatus = this.getStatusCodeFromCategory(category);
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 
-  toJSON() {
-    return {
-      name: this.name,
-      message: this.message,
-      code: this.code,
-      category: this.category,
-      severity: this.severity,
-      context: this.context,
-      recovery: this.recovery,
-      timestamp: this.timestamp
-    };
-  }
-}
-
-// Authentication Errors
-export class AuthenticationError extends AppError {
-  constructor(
-    message: string,
-    code: ErrorCodes = ErrorCodes.AUTHENTICATION_ERROR,
-    context: ErrorContext = {}
-  ) {
-    super(message, code, ErrorCategory.SECURITY, ErrorSeverity.ERROR, context, {
-      userMessage: 'Please sign in again to continue.',
-      retryable: true
-    }, 401);
+  private getStatusCodeFromCategory(category: ErrorCategory): number {
+    switch (category) {
+      case ErrorCategory.VALIDATION:
+      case ErrorCategory.BAD_REQUEST:
+        return 400;
+      case ErrorCategory.AUTHENTICATION:
+        return 401;
+      case ErrorCategory.AUTHORIZATION:
+      case ErrorCategory.FORBIDDEN:
+        return 403;
+      case ErrorCategory.NOT_FOUND:
+        return 404;
+      case ErrorCategory.CONFLICT:
+        return 409;
+      case ErrorCategory.INTERNAL:
+      case ErrorCategory.TECHNICAL:
+      default:
+        return 500;
+    }
   }
 }
 
-// Validation Errors
-export class ValidationError extends AppError {
-  constructor(
-    message: string,
-    context: ErrorContext = {}
-  ) {
-    super(message, ErrorCodes.VALIDATION_ERROR, ErrorCategory.VALIDATION, ErrorSeverity.WARNING, context, {
-      userMessage: 'Please check your input and try again.',
-      retryable: true
-    }, 400);
+// Alias for compatibility
+export class AppError extends BaseError {}
+
+export class ValidationError extends BaseError {
+  constructor(message: string) {
+    super('ValidationError', ErrorCodes.VALIDATION_ERROR, message, ErrorCategory.VALIDATION);
   }
 }
 
-// Resource Not Found Errors
-export class NotFoundError extends AppError {
-  constructor(
-    message: string,
-    context: ErrorContext = {}
-  ) {
-    super(message, ErrorCodes.NOT_FOUND, ErrorCategory.BUSINESS, ErrorSeverity.WARNING, context, {
-      userMessage: 'The requested resource could not be found.',
-      retryable: false
-    }, 404);
+export class NotFoundError extends BaseError {
+  constructor(message: string) {
+    super('NotFoundError', ErrorCodes.NOT_FOUND, message, ErrorCategory.NOT_FOUND);
   }
 }
 
-// Session Errors
-export class SessionError extends AppError {
-  constructor(
-    message: string,
-    code: ErrorCodes,
-    context: ErrorContext = {}
-  ) {
-    super(message, code, ErrorCategory.BUSINESS, ErrorSeverity.WARNING, context, {
-      userMessage: 'There was an issue with your meditation session.',
-      retryable: true
-    }, 400);
+export class DuplicateError extends BaseError {
+  constructor(message: string) {
+    super('DuplicateError', ErrorCodes.DUPLICATE_ERROR, message, ErrorCategory.CONFLICT);
+  }
+}
+
+export class AuthenticationError extends BaseError {
+  constructor(message: string) {
+    super('AuthenticationError', ErrorCodes.AUTHENTICATION_ERROR, message, ErrorCategory.AUTHENTICATION);
+  }
+}
+
+export class AuthorizationError extends BaseError {
+  constructor(message: string) {
+    super('AuthorizationError', ErrorCodes.AUTHORIZATION_ERROR, message, ErrorCategory.AUTHORIZATION);
+  }
+}
+
+export class InternalError extends BaseError {
+  constructor(message: string) {
+    super('InternalError', ErrorCodes.INTERNAL_ERROR, message, ErrorCategory.INTERNAL);
+  }
+}
+
+export class BadRequestError extends BaseError {
+  constructor(message: string) {
+    super('BadRequestError', ErrorCodes.BAD_REQUEST, message, ErrorCategory.BAD_REQUEST);
+  }
+}
+
+export class ConflictError extends BaseError {
+  constructor(message: string) {
+    super('ConflictError', ErrorCodes.CONFLICT, message, ErrorCategory.CONFLICT);
   }
 }
 
 // Concurrency Errors
-export class ConcurrencyError extends AppError {
-  constructor(
-    message: string,
-    context: ErrorContext = {}
-  ) {
-    super(message, ErrorCodes.CONCURRENCY_ERROR, ErrorCategory.TECHNICAL, ErrorSeverity.ERROR, context, {
-      userMessage: 'The operation could not be completed due to a conflict.',
-      retryable: true
-    }, 409);
+export class ConcurrencyError extends BaseError {
+  constructor(message: string) {
+    super('ConcurrencyError', ErrorCodes.CONCURRENCY_ERROR, message, ErrorCategory.CONFLICT);
   }
 }
 
 // Integration Errors (for external service issues)
-export class IntegrationError extends AppError {
-  constructor(
-    message: string,
-    service: string,
-    context: ErrorContext = {}
-  ) {
-    super(
-      message,
-      ErrorCodes.EXTERNAL_SERVICE_ERROR,
-      ErrorCategory.INTEGRATION,
-      ErrorSeverity.ERROR,
-      { ...context, service },
-      {
-        userMessage: 'We are experiencing technical difficulties.',
-        retryable: true,
-        suggestedAction: 'Please try again in a few minutes.'
-      },
-      503
-    );
+export class IntegrationError extends BaseError {
+  constructor(message: string) {
+    super('IntegrationError', ErrorCodes.EXTERNAL_SERVICE_ERROR, message, ErrorCategory.INTERNAL);
+  }
+}
+
+export function handleError(error: unknown, res: Response): void {
+  console.error('Error:', error);
+
+  if (error instanceof BaseError) {
+    const statusCode = getStatusCodeFromCategory(error.category);
+    res.status(statusCode).json({
+      error: {
+        name: error.name,
+        code: error.code,
+        message: error.message,
+        category: error.category
+      }
+    });
+  } else {
+    const internalError = error instanceof Error ? error : new Error(String(error));
+    res.status(500).json({
+      error: {
+        name: 'InternalError',
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: internalError.message || 'An unexpected error occurred',
+        category: ErrorCategory.INTERNAL
+      }
+    });
+  }
+}
+
+function getStatusCodeFromCategory(category: ErrorCategory): number {
+  switch (category) {
+    case ErrorCategory.VALIDATION:
+    case ErrorCategory.BAD_REQUEST:
+      return 400;
+    case ErrorCategory.AUTHENTICATION:
+      return 401;
+    case ErrorCategory.AUTHORIZATION:
+      return 403;
+    case ErrorCategory.NOT_FOUND:
+      return 404;
+    case ErrorCategory.CONFLICT:
+      return 409;
+    case ErrorCategory.INTERNAL:
+    default:
+      return 500;
   }
 } 

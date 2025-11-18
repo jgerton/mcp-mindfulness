@@ -1,0 +1,3 @@
+[33m2e63a5b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Fix mobile integration test issues with setupAppForTesting and dependencies
+[33m42caa06[m[33m ([m[1;33mtag: [m[1;33msprint-four-complete[m[33m, [m[1;31morigin/main[m[33m)[m Merge pull request #7 from jgerton/sprint-four-features
+[33m6e8f7f2[m[33m ([m[1;31morigin/sprint-four-features[m[33m, [m[1;32msprint-four-features[m[33m)[m Complete Sprint Four Feature Implementation including Stress Techniques and Data Export APIs

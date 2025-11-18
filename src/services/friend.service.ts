@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { Friend } from '../models/friend.model';
 import { User } from '../models/user.model';
 
@@ -11,11 +11,15 @@ export class FriendService {
       throw new Error('User not found');
     }
 
-    if (requester.blockedUserIds.includes(recipient._id) || recipient.blockedUserIds.includes(requester._id)) {
+    const recipientObjectId = recipient._id as Types.ObjectId;
+    const requesterObjectId = requester._id as Types.ObjectId;
+
+    if (requester.blockedUserIds?.some(id => id.equals(recipientObjectId)) || 
+        recipient.blockedUserIds?.some(id => id.equals(requesterObjectId))) {
       throw new Error('Cannot send friend request to this user');
     }
 
-    if (requester.friendIds.includes(recipient._id)) {
+    if (requester.friendIds?.some(id => id.equals(recipientObjectId))) {
       throw new Error('Users are already friends');
     }
 
@@ -63,8 +67,11 @@ export class FriendService {
     if (!requester.friendIds) requester.friendIds = [];
     if (!recipient.friendIds) recipient.friendIds = [];
 
-    requester.friendIds.push(recipient._id);
-    recipient.friendIds.push(requester._id);
+    const recipientObjectId = recipient._id as Types.ObjectId;
+    const requesterObjectId = requester._id as Types.ObjectId;
+
+    requester.friendIds.push(recipientObjectId);
+    recipient.friendIds.push(requesterObjectId);
 
     await requester.save();
     await recipient.save();
@@ -86,12 +93,19 @@ export class FriendService {
       throw new Error('User not found');
     }
 
-    if (!user.friendIds.includes(friend._id)) {
+    const friendObjectId = friend._id as Types.ObjectId;
+    const userObjectId = user._id as Types.ObjectId;
+
+    if (!user.friendIds?.some(id => id.equals(friendObjectId))) {
       throw new Error('Users are not friends');
     }
 
-    user.friendIds = user.friendIds.filter(id => !id.equals(friend._id));
-    friend.friendIds = friend.friendIds.filter(id => !id.equals(user._id));
+    if (user.friendIds) {
+      user.friendIds = user.friendIds.filter(id => !id.equals(friendObjectId));
+    }
+    if (friend.friendIds) {
+      friend.friendIds = friend.friendIds.filter(id => !id.equals(userObjectId));
+    }
 
     await user.save();
     await friend.save();
@@ -113,13 +127,20 @@ export class FriendService {
       throw new Error('User not found');
     }
 
+    const targetUserObjectId = targetUser._id as Types.ObjectId;
+    const userObjectId = user._id as Types.ObjectId;
+
     if (!user.blockedUserIds) user.blockedUserIds = [];
-    user.blockedUserIds.push(targetUser._id);
+    user.blockedUserIds.push(targetUserObjectId);
 
     // Remove from friends if they were friends
-    if (user.friendIds.includes(targetUser._id)) {
-      user.friendIds = user.friendIds.filter(id => !id.equals(targetUser._id));
-      targetUser.friendIds = targetUser.friendIds.filter(id => !id.equals(user._id));
+    if (user.friendIds?.some(id => id.equals(targetUserObjectId))) {
+      if (user.friendIds) {
+        user.friendIds = user.friendIds.filter(id => !id.equals(targetUserObjectId));
+      }
+      if (targetUser.friendIds) {
+        targetUser.friendIds = targetUser.friendIds.filter(id => !id.equals(userObjectId));
+      }
       await targetUser.save();
     }
 
@@ -142,7 +163,11 @@ export class FriendService {
       throw new Error('User not found');
     }
 
-    user.blockedUserIds = user.blockedUserIds.filter(id => !id.equals(targetUser._id));
+    const targetUserObjectId = targetUser._id as Types.ObjectId;
+
+    if (user.blockedUserIds) {
+      user.blockedUserIds = user.blockedUserIds.filter(id => !id.equals(targetUserObjectId));
+    }
     await user.save();
   }
 

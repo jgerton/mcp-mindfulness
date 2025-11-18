@@ -3,277 +3,291 @@ import { PMRController } from '../../controllers/pmr.controller';
 import { PMRService } from '../../services/pmr.service';
 import { MuscleGroup, PMRSession } from '../../models/pmr.model';
 import mongoose from 'mongoose';
+import { TestFactory } from '../utils/test-factory';
+import { ErrorCode, ErrorCategory } from '../../errors';
+import { setupModelMocks } from '../utils/setup-model-mocks';
 
-const mockResponse = () => {
-  const res: Partial<Response> = {
-    json: jest.fn(),
-    status: jest.fn().mockReturnThis()
-  };
-  return res as Response;
-};
+// Define types for better type safety
+interface TestContext {
+  mockReq: Request;
+  mockRes: Response;
+  testFactory: TestFactory;
+}
 
-const mockRequest = (data: any = {}): Partial<Request> => ({
-  user: { _id: 'test-user', username: 'testuser' },
-  body: data.body || {},
-  params: data.params || {},
-  query: data.query || {},
-});
+// Mock PMRService
+jest.mock('../../services/pmr.service');
 
 describe('PMRController', () => {
-  beforeEach(async () => {
-    if (mongoose.connection.readyState !== 0) {
-      const db = mongoose.connection.db;
-      if (db) {
-        try {
-          await db.collection('musclegroups').deleteMany({});
-          await db.collection('pmrsessions').deleteMany({});
-        } catch (error) {
-          // Collections might not exist, ignore error
-        }
-      }
-    }
-    await PMRService.initializeDefaultMuscleGroups();
-    
-    const muscleGroups = await MuscleGroup.find().sort('order');
-    if (muscleGroups.length !== 7) {
-      console.log(`Warning: Expected 7 muscle groups, but found ${muscleGroups.length}`);
-    }
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+  const mockUserId = new mongoose.Types.ObjectId().toString();
+
+  beforeEach(() => {
+    mockReq = {
+      user: { _id: mockUserId },
+      params: {},
+      body: {},
+      query: {},
+    };
+    mockRes = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    jest.clearAllMocks();
   });
 
   describe('getMuscleGroups', () => {
-    it('should return all muscle groups in correct order', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
+    const mockMuscleGroups: MuscleGroup[] = [
+      { name: 'Arms', description: 'Arm muscles', order: 1 },
+      { name: 'Legs', description: 'Leg muscles', order: 2 },
+    ];
 
-      await PMRController.getMuscleGroups(req as Request, res);
+    it('should return muscle groups successfully', async () => {
+      (PMRService.initializeDefaultMuscleGroups as jest.Mock).mockResolvedValue(undefined);
+      (PMRService.getMuscleGroups as jest.Mock).mockResolvedValue(mockMuscleGroups);
 
-      expect(res.json).toHaveBeenCalled();
-      const groups = (res.json as jest.Mock).mock.calls[0][0];
-      expect(groups).toHaveLength(7);
-      expect(groups[0].name).toBe('hands_and_forearms');
-      expect(groups[6].name).toBe('legs');
+      await PMRController.getMuscleGroups(mockReq as Request, mockRes as Response);
+
+      expect(PMRService.initializeDefaultMuscleGroups).toHaveBeenCalled();
+      expect(PMRService.getMuscleGroups).toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalledWith(mockMuscleGroups);
     });
 
-    it('should handle errors gracefully', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-      
-      // Force an error by mocking the find method
-      const originalFind = MuscleGroup.find;
-      MuscleGroup.find = jest.fn().mockImplementationOnce(() => {
-        throw new Error('Test error');
-      }) as any;
+    it('should handle errors when getting muscle groups', async () => {
+      const error = new Error('Database error');
+      (PMRService.initializeDefaultMuscleGroups as jest.Mock).mockRejectedValue(error);
 
-      await PMRController.getMuscleGroups(req as Request, res);
+      await PMRController.getMuscleGroups(mockReq as Request, mockRes as Response);
 
-      // Restore the original method
-      MuscleGroup.find = originalFind;
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Failed to get muscle groups' });
-    });
-
-    it.skip('should return 500 for invalid session id', async () => {
-      const req = mockRequest({
-        params: { sessionId: 'invalid-id' },
-        body: { completedGroups: [] }
-      });
-      const res = mockResponse();
-
-      await PMRController.completeSession(req as Request, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Failed to complete PMR session' });
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Failed to get muscle groups' });
     });
   });
 
   describe('startSession', () => {
-    it('should create new session with valid data', async () => {
-      const req = mockRequest({
-        body: { stressLevelBefore: 7 }
-      });
-      const res = mockResponse();
+    const mockSession: Partial<PMRSession> = {
+      _id: new mongoose.Types.ObjectId().toString(),
+      userId: mockUserId,
+      stressLevelBefore: 7,
+      startTime: new Date(),
+    };
 
-      await PMRController.startSession(req as Request, res);
+    it('should start a session successfully', async () => {
+      mockReq.body = { stressLevelBefore: 7 };
+      (PMRService.startSession as jest.Mock).mockResolvedValue(mockSession);
 
-      expect(res.json).toHaveBeenCalled();
-      const session = (res.json as jest.Mock).mock.calls[0][0];
-      expect(session.stressLevelBefore).toBe(7);
-      expect(session.completedGroups).toEqual([]);
-      expect(session.duration).toBe(225); // Total duration of all muscle groups
+      await PMRController.startSession(mockReq as Request, mockRes as Response);
+
+      expect(PMRService.startSession).toHaveBeenCalledWith(mockUserId, 7);
+      expect(mockRes.json).toHaveBeenCalledWith(mockSession);
     });
 
-    it('should return 401 when user not authenticated', async () => {
-      const req = mockRequest();
-      req.user = undefined;
-      const res = mockResponse();
+    it('should return 401 if user is not authenticated', async () => {
+      mockReq.user = undefined;
+      mockReq.body = { stressLevelBefore: 7 };
 
-      await PMRController.startSession(req as Request, res);
+      await PMRController.startSession(mockReq as Request, mockRes as Response);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    });
+
+    it('should return 400 if stress level is not provided', async () => {
+      mockReq.body = {};
+
+      await PMRController.startSession(mockReq as Request, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Stress level is required' });
     });
   });
 
   describe('completeSession', () => {
-    let sessionId: string;
+    const mockSessionId = new mongoose.Types.ObjectId().toString();
+    const mockSession: Partial<PMRSession> = {
+      _id: mockSessionId,
+      userId: mockUserId,
+      stressLevelBefore: 7,
+      startTime: new Date(),
+    };
 
-    beforeEach(async () => {
-      const session = await PMRService.startSession('test-user', 7);
-      sessionId = (session._id as mongoose.Types.ObjectId).toString();
+    beforeEach(() => {
+      mockReq.params = { sessionId: mockSessionId };
+      mockReq.body = {
+        completedGroups: ['Arms', 'Legs'],
+        stressLevelAfter: 4,
+      };
     });
 
-    it('should complete session with valid data', async () => {
-      const completedGroups = ['hands_and_forearms', 'biceps', 'shoulders'];
-      const req = mockRequest({
-        params: { sessionId },
-        body: {
-          completedGroups,
-          stressLevelAfter: 3
-        }
-      });
-      const res = mockResponse();
+    it('should complete a session successfully', async () => {
+      (PMRService.getSessionById as jest.Mock).mockResolvedValue({ ...mockSession, userId: mockUserId });
+      (PMRService.completeSession as jest.Mock).mockResolvedValue({ ...mockSession, completed: true });
 
-      await PMRController.completeSession(req as Request, res);
+      await PMRController.completeSession(mockReq as Request, mockRes as Response);
 
-      expect(res.json).toHaveBeenCalled();
-      const completedSession = (res.json as jest.Mock).mock.calls[0][0];
-      expect(completedSession.completedGroups).toEqual(completedGroups);
-      expect(completedSession.stressLevelAfter).toBe(3);
+      expect(PMRService.completeSession).toHaveBeenCalledWith(
+        mockSessionId,
+        ['Arms', 'Legs'],
+        4
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({ completed: true }));
     });
 
-    it.skip('should return 500 for invalid session id', async () => {
-      const req = mockRequest({
-        params: { sessionId: 'invalid-id' },
-        body: { completedGroups: [] }
+    it('should return 404 if session is not found', async () => {
+      (PMRService.getSessionById as jest.Mock).mockResolvedValue(null);
+
+      await PMRController.completeSession(mockReq as Request, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Session not found' });
+    });
+
+    it('should return 403 if session belongs to different user', async () => {
+      (PMRService.getSessionById as jest.Mock).mockResolvedValue({
+        ...mockSession,
+        userId: new mongoose.Types.ObjectId().toString(),
       });
-      const res = mockResponse();
 
-      await PMRController.completeSession(req as Request, res);
+      await PMRController.completeSession(mockReq as Request, mockRes as Response);
 
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Failed to complete PMR session' });
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized access to session' });
     });
   });
 
   describe('updateProgress', () => {
-    let sessionId: string;
+    const mockSessionId = new mongoose.Types.ObjectId().toString();
+    const mockSession: Partial<PMRSession> = {
+      _id: mockSessionId,
+      userId: mockUserId,
+      stressLevelBefore: 7,
+      startTime: new Date(),
+    };
 
-    beforeEach(async () => {
-      const session = await PMRService.startSession('test-user');
-      sessionId = (session._id as mongoose.Types.ObjectId).toString();
+    beforeEach(() => {
+      mockReq.params = { sessionId: mockSessionId };
+      mockReq.body = { completedGroup: 'Arms' };
     });
 
-    it('should update progress with valid muscle group', async () => {
-      const req = mockRequest({
-        params: { sessionId },
-        body: { completedGroup: 'hands_and_forearms' }
+    it('should update progress successfully', async () => {
+      (PMRService.getSessionById as jest.Mock).mockResolvedValue({ ...mockSession, userId: mockUserId });
+      (PMRService.updateMuscleGroupProgress as jest.Mock).mockResolvedValue({
+        ...mockSession,
+        completedGroups: ['Arms'],
       });
-      const res = mockResponse();
 
-      await PMRController.updateProgress(req as Request, res);
+      await PMRController.updateProgress(mockReq as Request, mockRes as Response);
 
-      expect(res.json).toHaveBeenCalled();
-      const updatedSession = (res.json as jest.Mock).mock.calls[0][0];
-      expect(updatedSession.completedGroups).toContain('hands_and_forearms');
+      expect(PMRService.updateMuscleGroupProgress).toHaveBeenCalledWith(mockSessionId, 'Arms');
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({ completedGroups: ['Arms'] }));
     });
 
-    it('should return 500 for invalid session id', async () => {
-      const req = mockRequest({
-        params: { sessionId: 'invalid-id' },
-        body: { completedGroup: 'hands_and_forearms' }
+    it('should return 404 if session is not found', async () => {
+      (PMRService.getSessionById as jest.Mock).mockResolvedValue(null);
+
+      await PMRController.updateProgress(mockReq as Request, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Session not found' });
+    });
+
+    it('should return 403 if session belongs to different user', async () => {
+      (PMRService.getSessionById as jest.Mock).mockResolvedValue({
+        ...mockSession,
+        userId: new mongoose.Types.ObjectId().toString(),
       });
-      const res = mockResponse();
 
-      await PMRController.updateProgress(req as Request, res);
+      await PMRController.updateProgress(mockReq as Request, mockRes as Response);
 
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Failed to update PMR progress' });
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized access to session' });
+    });
+
+    it('should handle invalid muscle group error', async () => {
+      (PMRService.getSessionById as jest.Mock).mockResolvedValue({ ...mockSession, userId: mockUserId });
+      (PMRService.updateMuscleGroupProgress as jest.Mock).mockRejectedValue(
+        new Error('Invalid muscle group: InvalidGroup')
+      );
+
+      await PMRController.updateProgress(mockReq as Request, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Invalid muscle group: InvalidGroup' });
     });
   });
 
   describe('getUserSessions', () => {
-    beforeEach(async () => {
-      // Create multiple sessions
-      await PMRService.startSession('test-user', 7);
-      await PMRService.startSession('test-user', 8);
-      await PMRService.startSession('test-user', 6);
+    const mockSessions: Partial<PMRSession>[] = [
+      {
+        _id: new mongoose.Types.ObjectId().toString(),
+        userId: mockUserId,
+        stressLevelBefore: 7,
+        startTime: new Date(),
+      },
+    ];
+
+    it('should get user sessions successfully', async () => {
+      mockReq.query = { limit: '5' };
+      (PMRService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions);
+
+      await PMRController.getUserSessions(mockReq as Request, mockRes as Response);
+
+      expect(PMRService.getUserSessions).toHaveBeenCalledWith(mockUserId, 5);
+      expect(mockRes.json).toHaveBeenCalledWith(mockSessions);
     });
 
-    it('should return user sessions with default limit', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
+    it('should use default limit if not provided', async () => {
+      (PMRService.getUserSessions as jest.Mock).mockResolvedValue(mockSessions);
 
-      await PMRController.getUserSessions(req as Request, res);
+      await PMRController.getUserSessions(mockReq as Request, mockRes as Response);
 
-      expect(res.json).toHaveBeenCalled();
-      const sessions = (res.json as jest.Mock).mock.calls[0][0];
-      expect(sessions).toHaveLength(3);
+      expect(PMRService.getUserSessions).toHaveBeenCalledWith(mockUserId, 10);
+      expect(mockRes.json).toHaveBeenCalledWith(mockSessions);
     });
 
-    it('should respect limit parameter', async () => {
-      const req = mockRequest({ query: { limit: '2' } });
-      const res = mockResponse();
+    it('should return 401 if user is not authenticated', async () => {
+      mockReq.user = undefined;
 
-      await PMRController.getUserSessions(req as Request, res);
+      await PMRController.getUserSessions(mockReq as Request, mockRes as Response);
 
-      expect(res.json).toHaveBeenCalled();
-      const sessions = (res.json as jest.Mock).mock.calls[0][0];
-      expect(sessions).toHaveLength(2);
-    });
-
-    it('should return 401 when user not authenticated', async () => {
-      const req = mockRequest();
-      req.user = undefined;
-      const res = mockResponse();
-
-      await PMRController.getUserSessions(req as Request, res);
-
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
     });
   });
 
   describe('getEffectiveness', () => {
-    beforeEach(async () => {
-      // Create and complete sessions with different effectiveness
-      const session1 = await PMRService.startSession('test-user', 8);
-      await PMRService.completeSession(
-        (session1._id as mongoose.Types.ObjectId).toString(),
-        ['hands_and_forearms', 'biceps', 'shoulders'],
-        4
-      );
+    const mockEffectiveness = {
+      averageStressReduction: 3,
+      totalSessions: 10,
+      completionRate: 0.8,
+    };
 
-      const session2 = await PMRService.startSession('test-user', 7);
-      await PMRService.completeSession(
-        (session2._id as mongoose.Types.ObjectId).toString(),
-        ['hands_and_forearms', 'biceps', 'shoulders', 'face', 'chest_and_back'],
-        3
-      );
+    it('should get effectiveness data successfully', async () => {
+      (PMRService.getEffectiveness as jest.Mock).mockResolvedValue(mockEffectiveness);
+
+      await PMRController.getEffectiveness(mockReq as Request, mockRes as Response);
+
+      expect(PMRService.getEffectiveness).toHaveBeenCalledWith(mockUserId);
+      expect(mockRes.json).toHaveBeenCalledWith(mockEffectiveness);
     });
 
-    it('should return effectiveness metrics', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
+    it('should return 401 if user is not authenticated', async () => {
+      mockReq.user = undefined;
 
-      await PMRController.getEffectiveness(req as Request, res);
+      await PMRController.getEffectiveness(mockReq as Request, mockRes as Response);
 
-      expect(res.json).toHaveBeenCalled();
-      const effectiveness = (res.json as jest.Mock).mock.calls[0][0];
-      expect(effectiveness).toHaveProperty('averageStressReduction');
-      expect(effectiveness).toHaveProperty('totalSessions');
-      expect(effectiveness).toHaveProperty('averageCompletionRate');
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
     });
 
-    it('should return 401 when user not authenticated', async () => {
-      const req = mockRequest();
-      req.user = undefined;
-      const res = mockResponse();
+    it('should handle errors when getting effectiveness', async () => {
+      const error = new Error('Database error');
+      (PMRService.getEffectiveness as jest.Mock).mockRejectedValue(error);
 
-      await PMRController.getEffectiveness(req as Request, res);
+      await PMRController.getEffectiveness(mockReq as Request, mockRes as Response);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Failed to get PMR effectiveness' });
     });
   });
-}); 
+});
