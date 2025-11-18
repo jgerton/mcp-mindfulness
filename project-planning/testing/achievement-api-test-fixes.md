@@ -1,220 +1,197 @@
-# Achievement API Endpoint Test Fixes
+# Achievement API Tests - Issues and Solutions
 
-## Issues Identified
+## Current Issues
 
-After extensive investigation, we've identified several issues causing timeout problems in the Achievement API endpoint tests:
+The API route tests for achievement endpoints are currently experiencing the following issues:
 
-1. **MongoDB Connection Management**
-   - Multiple connections being created and not properly closed
-   - Connection conflicts between the main application and test environment
-   - Mongoose warnings about duplicate schema indexes
+1. **Connection Timeouts**: Tests timeout after 30 seconds without completing
+2. **Socket Handles**: Open TCP socket handles remain after tests complete
+3. **Database Connections**: Multiple MongoDB connections created but not properly closed
+4. **Server Cleanup**: HTTP server not properly closed between tests
+5. **Authentication**: Inconsistent auth token handling
 
-2. **Supertest Connection Handling**
-   - Open TCP handles from supertest requests not being properly closed
-   - Requests hanging and not completing within the timeout period
+## Root Causes
 
-3. **Schema Validation Errors**
-   - Achievement category validation failing with incorrect values
-   - Schema validation errors preventing tests from completing
+After analysis, we've identified these root causes:
 
-4. **Test Structure Issues**
-   - Jest done.fail() function not available in newer Jest versions
-   - Uncaught promises causing tests to hang
-   - Improper error handling in async tests
+1. **Server Lifecycle Management**: The Express server created with `app.listen()` is not properly closed between tests
+2. **Connection Pooling Issues**: MongoDB creates new connections for each test but doesn't close them
+3. **Request Handling**: Supertest requests aren't completing properly
+4. **Middleware Mocking**: Authentication middleware is mocked but not always used effectively
+5. **Test Isolation**: Tests are not properly isolated, causing state to leak between tests
 
-5. **Middleware Mocking Problems**
-   - Incomplete mocking of authentication middleware
-   - Validation middleware not properly mocked
+## Solutions
 
-## Solutions Implemented
+### 1. Create Dedicated Test Server Utility
 
-### 1. MongoDB Connection Management
+Create a test utility to properly manage server lifecycle:
 
 ```typescript
-// Use a dedicated connection for tests
-let mongoServer: MongoMemoryServer;
-let mongoConnection: mongoose.Connection;
+// src/__tests__/utils/test-server.ts
+import { Application } from 'express';
+import { Server } from 'http';
+import request from 'supertest';
 
-// Setup before all tests
-beforeAll(async () => {
-  // Create an in-memory MongoDB server
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
+export class TestServer {
+  private server: Server | null = null;
   
-  // Create a dedicated connection for this test file
-  mongoConnection = await mongoose.createConnection(mongoUri);
+  constructor(private app: Application) {}
   
-  // Make models use this connection
-  const AchievementModel = mongoConnection.model('Achievement', Achievement.schema);
-  const UserAchievementModel = mongoConnection.model('UserAchievement', UserAchievement.schema);
-  
-  // Replace the models with our connection-specific ones
-  jest.spyOn(Achievement, 'find').mockImplementation(function() {
-    return AchievementModel.find();
-  });
-  
-  // Additional model method mocks...
-});
-
-// Clean up after all tests
-afterAll(async () => {
-  // Close mongoose connection
-  if (mongoConnection) {
-    await mongoConnection.close();
-  }
-  
-  // Stop MongoDB server
-  if (mongoServer) {
-    await mongoServer.stop();
-  }
-  
-  // Close Express server
-  if (closeServer) {
-    await closeServer();
-  }
-});
-```
-
-### 2. Supertest Connection Handling
-
-```typescript
-// Use done callback pattern for all tests to ensure proper cleanup
-it('should return a specific achievement by ID', (done) => {
-  Achievement.findOne().then((achievement) => {
-    if (!achievement) {
-      done(new Error('No achievement found'));
-      return;
-    }
-    
-    const achievementId = (achievement as any)._id.toString();
-    
-    request(app)
-      .get(`/api/achievements/${achievementId}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .end((err, response) => {
-        if (err) return done(err);
-        
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('_id', achievementId);
-        expect(response.body).toHaveProperty('name');
-        expect(response.body).toHaveProperty('description');
-        done();
+  async start(): Promise<void> {
+    return new Promise(resolve => {
+      this.server = this.app.listen(0, () => {
+        resolve();
       });
-  }).catch(done);
-});
-```
-
-### 3. Schema Validation Fixes
-
-```typescript
-// Sample achievement data with valid category values
-const sampleAchievements = [
-  {
-    name: 'First Meditation',
-    description: 'Complete your first meditation session',
-    category: 'milestone', // Valid category from enum
-    criteria: {
-      type: 'session_count',
-      value: 1
-    },
-    points: 10,
-    icon: 'meditation_icon.png'
-  },
-  {
-    name: 'Meditation Streak',
-    description: 'Complete 3 days of meditation in a row',
-    category: 'streak', // Valid category from enum
-    criteria: {
-      type: 'streak_days',
-      value: 3
-    },
-    points: 30,
-    icon: 'streak_icon.png'
-  }
-];
-```
-
-### 4. Comprehensive Middleware Mocking
-
-```typescript
-// Mock all required modules before importing app
-jest.mock('../../middleware/auth.middleware', () => ({
-  authenticateToken: jest.fn((req: Request, res: Response, next: NextFunction) => {
-    if (req.headers.authorization) {
-      req.user = { _id: 'testUserId', username: 'testUsername' };
-      next();
-    } else {
-      res.status(401).json({ message: 'Unauthorized' });
-    }
-  }),
-  authenticateUser: jest.fn((req: Request, res: Response, next: NextFunction) => {
-    if (req.headers.authorization) {
-      req.user = { _id: 'testUserId', username: 'testUsername' };
-      next();
-    } else {
-      res.status(401).json({ message: 'Unauthorized' });
-    }
-  })
-}));
-
-jest.mock('../../middleware/validation.middleware', () => ({
-  validateRequest: jest.fn(() => (req: Request, res: Response, next: NextFunction) => next()),
-  validateStressTracking: jest.fn((req: Request, res: Response, next: NextFunction) => next()),
-  validateAssessment: jest.fn((req: Request, res: Response, next: NextFunction) => next()),
-  validatePreferences: jest.fn((req: Request, res: Response, next: NextFunction) => next())
-}));
-```
-
-### 5. Express Server Cleanup
-
-```typescript
-// In app.js
-// Function to close server and connections for testing
-export const closeServer = async (): Promise<void> => {
-  return new Promise((resolve) => {
-    console.log('Closing HTTP server and socket connections...');
-    // First close the HTTP server
-    httpServer.close(() => {
-      console.log('HTTP server closed');
-      // Then close any socket connections
-      if (socketManager) {
-        console.log('Closing socket connections...');
-        socketManager.close();
-        console.log('Socket connections closed');
-      }
-      // Resolve the promise after all connections are closed
-      console.log('All connections closed');
-      resolve();
     });
-  });
+  }
+  
+  async stop(): Promise<void> {
+    if (!this.server) return;
+    
+    return new Promise((resolve, reject) => {
+      this.server.close(err => {
+        if (err) reject(err);
+        this.server = null;
+        resolve();
+      });
+    });
+  }
+  
+  get httpServer(): Server | null {
+    return this.server;
+  }
+  
+  getRequest(): request.SuperTest<request.Test> {
+    if (!this.server) {
+      throw new Error('Server not started');
+    }
+    return request(this.app);
+  }
+}
+
+export const createTestServer = (app: Application): TestServer => {
+  return new TestServer(app);
 };
 ```
 
-## Best Practices for Future Tests
+### 2. Implement Connection Management Improvements
 
-1. **Connection Management**
-   - Use dedicated connections for tests
-   - Always close connections in afterAll hooks
-   - Consider using connection pooling for better performance
+Enhance the test database utility to properly manage connections:
 
-2. **Test Structure**
-   - Use done callback pattern for tests with async operations
-   - Properly handle errors in async tests
-   - Set appropriate timeouts for long-running tests
+```typescript
+// src/__tests__/utils/test-db.ts (additions)
 
-3. **Mocking**
-   - Mock all external dependencies
-   - Ensure middleware is properly mocked
-   - Use jest.spyOn for model methods
+// Track open connections
+let openConnections: mongoose.Connection[] = [];
 
-4. **Cleanup**
-   - Reset mocks in afterEach hooks
-   - Close all connections in afterAll hooks
-   - Use --detectOpenHandles flag to identify leaks
+export const trackConnection = (conn: mongoose.Connection): void => {
+  openConnections.push(conn);
+};
 
-5. **Error Handling**
-   - Add proper error handling for all async operations
-   - Use try/catch blocks in async tests
-   - Add timeout handling for long-running operations
+export const closeAllConnections = async (): Promise<void> => {
+  for (const conn of openConnections) {
+    if (conn.readyState !== 0) {
+      await conn.close();
+    }
+  }
+  openConnections = [];
+};
+```
 
-By implementing these solutions and following these best practices, we can ensure that our tests run reliably and efficiently without timeout issues. 
+### 3. Create API Test Helper
+
+Build a utility for API testing that combines server and DB management:
+
+```typescript
+// src/__tests__/utils/api-test-helper.ts
+import { Application } from 'express';
+import { createTestServer, TestServer } from './test-server';
+import { setupTestDatabase, closeTestDB } from './test-db';
+import request from 'supertest';
+
+export class ApiTestHelper {
+  private testServer: TestServer;
+  
+  constructor(app: Application) {
+    this.testServer = createTestServer(app);
+  }
+  
+  async setup(): Promise<void> {
+    await setupTestDatabase();
+    await this.testServer.start();
+  }
+  
+  async teardown(): Promise<void> {
+    await this.testServer.stop();
+    await closeTestDB();
+    // Add small delay to ensure all resources are released
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  getRequest(): request.SuperTest<request.Test> {
+    return this.testServer.getRequest();
+  }
+}
+```
+
+### 4. Update Achievement API Tests
+
+Modify the achievement route tests to use the new utilities:
+
+```typescript
+// src/__tests__/routes/achievement.routes.test.ts (api tests section)
+import { ApiTestHelper } from '../utils/api-test-helper';
+import { app } from '../../app';
+
+describe('Achievement API Routes', () => {
+  let apiHelper: ApiTestHelper;
+  
+  beforeAll(async () => {
+    apiHelper = new ApiTestHelper(app);
+    await apiHelper.setup();
+  });
+  
+  afterAll(async () => {
+    await apiHelper.teardown();
+  });
+  
+  // Test cases using apiHelper.getRequest() instead of request(app)
+});
+```
+
+### 5. Implement Test Isolation
+
+Ensure each test properly cleans up resources after execution:
+
+- Create data isolation helpers
+- Use transaction-like patterns for database operations
+- Create separate connection pools for each test suite
+- Implement more aggressive cleanup in afterEach hooks
+
+## Implementation Plan
+
+1. Create test utilities (test-server.ts, api-test-helper.ts)
+2. Update database connection management
+3. Create dedicated achievement API test file separate from controller tests
+4. Implement properly isolated tests with appropriate timeouts
+5. Add monitoring for open handles during testing
+6. Create comprehensive documentation for API testing patterns
+
+## Expected Results
+
+After implementing these changes:
+
+1. API route tests should complete successfully without timeouts
+2. No open handles should remain after tests complete
+3. Database connections should be properly closed
+4. Tests will be isolated and won't affect each other
+5. CI/CD pipeline will run more reliably
+
+## Note on Test-Driven Development
+
+We should update our TDD process to include:
+
+1. Proper test isolation from the beginning
+2. Clear separation between unit tests and integration tests
+3. Guidelines for managing test resource lifecycles
+4. API testing patterns and best practices 

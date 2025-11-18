@@ -218,4 +218,21 @@ For API route tests, follow this pattern:
 4. Use proper cleanup with small delays
 5. Implement comprehensive test cases including error scenarios
 
+## Related Guides
+
+For API-specific testing patterns that build on these connection management principles, see the [API Test Patterns Guide](./api-test-patterns-guide.md), which covers:
+
+- Creating isolated Express app instances
+- Controller instantiation best practices
+- Authentication middleware mocking
+- Proper route registration for tests
+- Examples from our achievement API implementation
+
+For addressing TypeScript-related issues in tests, see the [Type-First Development Guide](./type-first-development-guide.md), which covers:
+
+- Creating shared interfaces for controllers and models
+- Defining parameter types for proper validation
+- Using test data factories for consistent test data
+- Implementation verification with interface compliance
+
 By following these guidelines, we can prevent connection-related timeouts and ensure our test suite runs efficiently. 

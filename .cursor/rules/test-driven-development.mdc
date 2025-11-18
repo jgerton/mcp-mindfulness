@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+We are following TDD or Test Driven Development, there will need to be a test created first. So be sure to take time to understand the scope of the task and what features or changes will need a test case before writing project code. Ask me questions if you are not sure about the scope of the tasks. And always verify with me what your plan is.

@@ -433,6 +433,60 @@ export async function findDocumentById<T extends mongoose.Document>(
 }
 ```
 
+### Type-First Development Approach
+
+To address the frequent issues with TypeScript errors and parameter mismatches in our TDD process, we now follow a Type-First Development approach. This means defining and verifying shared interfaces and types before writing tests or implementation.
+
+#### Key Principles
+
+1. **Define Interfaces First**: Create interfaces for controllers, services, and models before writing any tests or implementation
+2. **Share Types Between Tests and Implementation**: Use the same type definitions in both test and implementation code
+3. **Use Explicit Parameter Types**: Define explicit types for all parameters in controller and service methods
+4. **Create Type Guards**: Implement runtime type validation for parameters
+5. **Use Test Data Factories**: Create type-safe factories for test data that match model interfaces
+
+#### Required Steps in TDD Process
+
+1. **Interface Definition Phase** (before writing tests):
+   - Define controller, service, and model interfaces
+   - Create request/response type definitions
+   - Define parameter type guards
+   - Create test data factories
+
+2. **Test Implementation Phase**:
+   - Import and use shared interfaces
+   - Validate parameter types match expectations
+   - Use test data factories for consistent data creation
+   - Verify model schema matches interface definitions
+
+3. **Implementation Phase**:
+   - Implement controllers and services using shared interfaces
+   - Use interface implementations for type checking
+   - Leverage type guards for runtime validation
+
+#### Example Type-First Code
+
+```typescript
+// Interface definition (shared by tests and implementation)
+export interface IAchievementController {
+  getAllAchievements(req: Request & {query?: {category?: string}}, res: Response): Promise<void>;
+  getAchievementById(req: Request & {params: {id: string}}, res: Response): Promise<void>;
+}
+
+// Tests using shared interface
+const controller: IAchievementController = new AchievementController();
+// Type-checking will ensure controller implements the interface
+
+// Implementation using shared interface
+export class AchievementController implements IAchievementController {
+  async getAllAchievements(req: Request & {query?: {category?: string}}, res: Response): Promise<void> {
+    // Implementation
+  }
+}
+```
+
+See the [Type-First Development Guide](./guides/type-first-development-guide.md) and [API Test Patterns Guide](./guides/api-test-patterns-guide.md) for detailed implementation instructions.
+
 ### Authentication & Authorization Testing
 
 #### Authentication Testing

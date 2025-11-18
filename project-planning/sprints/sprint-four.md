@@ -2,26 +2,26 @@
 
 ## Sprint Kickoff
 
-**Date: June 27, 2023**
+**Date: March 14, 2025**
 
-Sprint Four officially begins today, following the successful completion of Sprint Three. This sprint will focus on refinement, optimization, and addressing the outstanding issues from the previous sprint, particularly the timeout problems with the Achievement API endpoint tests.
+Sprint Four officially begins today as our first sprint for this project. This sprint will focus on refinement, optimization, and addressing outstanding issues, particularly the timeout problems with the Achievement API endpoint tests.
 
-The team has already made significant progress in identifying the root causes of these issues and has documented potential solutions in the `project-planning/testing/achievement-api-test-fixes.md` file. This will be our highest priority task for the sprint.
+The team has already made progress in identifying the root causes of these issues and has documented potential solutions in the `project-planning/testing/achievement-api-test-fixes.md` file. This will be our highest priority task for the sprint.
 
-In addition to resolving these issues, we will also implement the remaining low-priority features that were deferred from Sprint Three, optimize the performance of existing features, enhance error handling, and improve test coverage and reliability.
+In addition to resolving these issues, we will also implement the remaining low-priority features, optimize the performance of existing features, enhance error handling, and improve test coverage and reliability.
 
-Let's build on the momentum from Sprint Three and make Sprint Four even more successful!
+Let's build momentum and make Sprint Four successful!
 
 ## Sprint Goals
-- Resolve outstanding issues from Sprint Three
+- Resolve outstanding issues with Achievement API endpoint tests
 - Implement remaining low-priority features
 - Optimize performance of existing features
 - Enhance error handling and edge case coverage
 - Improve test coverage and reliability
 
 ## Sprint Duration
-- Start Date: June 27, 2023
-- End Date: July 10, 2023
+- Start Date: March 14, 2025
+- End Date: March 28, 2025
 - Duration: 2 weeks
 
 ## Sprint Backlog
@@ -46,6 +46,7 @@ Let's build on the momentum from Sprint Three and make Sprint Four even more suc
      - Update test patterns to use modern Jest syntax
      - Add proper error handling for all async operations
    - Document the solution for future reference
+     - Create a comprehensive MongoDB connection guide: `project-planning/guides/mongodb-connection-guide.md`
 
 2. **Implement Remaining Low-Priority Features**
    - Create data export API endpoints
@@ -125,7 +126,6 @@ To ensure we effectively address the timeout issues in the achievement API endpo
 ## Related Documentation
 - [Coding Standards](../standards/coding-standards.md)
 - [Frontend Architecture](../architecture/frontend-architecture.md)
-- [Sprint Three Review](./sprint-three-review.md)
 - [UI Component Dependencies](./documentation/ui-component-dependencies.md)
 
 ## Sprint Four Documentation

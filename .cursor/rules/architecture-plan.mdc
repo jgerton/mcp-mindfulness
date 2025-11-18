@@ -1,0 +1,46 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+#Architecture Standards
+[architecture-plan.md](mdc:project-planning/architecture-plan.md)
+[backend-architecture.md](mdc:project-planning/architecture/backend-architecture.md)
+[frontend-architecture.md](mdc:project-planning/architecture/frontend-architecture.md)
+
+#Project Standards
+[coding-standards.md](mdc:project-planning/coding-standards.md)
+[testing-standards.md](mdc:project-planning/standards/testing-standards.md)
+[documentation-standards.md](mdc:project-planning/standards/documentation-standards.md)
+
+#Process & Workflow
+[work-flow.md](mdc:project-planning/work-flow.md)
+[user-journey-plan.md](mdc:project-planning/user-journey-plan.md)
+
+#VDA Framework (Critical for Project Management)
+#VDA Implementation Docs
+[vertical-dependency-analysis-framework.md](mdc:project-planning/guides/vertical-dependency-analysis-framework.md)
+[vda-tdd-integration-guide.md](mdc:project-planning/guides/vda-tdd-integration-guide.md)
+[vda-dashboard.md](mdc:project-planning/dashboards/vda-dashboard.md)
+[gap-registry.md](mdc:project-planning/tracking/gap-registry.md)
+
+#Sprint Planning
+[sprint-task-template.md](mdc:project-planning/templates/sprint-task-template.md)
+
+#Development Guides
+[mongodb-connection-guide.md](mdc:project-planning/guides/mongodb-connection-guide.md)
+[architectural-dependency-guide.md](mdc:project-planning/guides/architectural-dependency-guide.md)
+[model-dependency-guide.md](mdc:project-planning/guides/model-dependency-guide.md)
+
+#Feature Planning
+[backend-feature-review.md](mdc:project-planning/backend-feature-review.md)
+[frontend-interface-plan.md](mdc:project-planning/features/frontend-interface-plan.md)
+[milestone-planning-guide.md](mdc:project-planning/guides/milestone-planning-guide.md)
+
+
+#This will help maintain alignment with project proceses, standards, and current progress in chat conversations

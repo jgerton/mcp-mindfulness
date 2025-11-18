@@ -160,6 +160,220 @@ describe('WebSocket Feature', () => {
 - Handle connection errors gracefully
 - Use helper functions for common database operations
 
+### MongoDB Connection Management for Tests
+
+Based on our experience resolving timeout issues in the achievement API endpoint tests, we've established the following best practices for MongoDB connection management in tests:
+
+#### Direct Controller Testing vs. Route Testing
+
+- **Prefer direct controller testing** when testing controller logic
+  - More reliable and faster than testing through Express routes
+  - Eliminates network overhead and potential supertest connection issues
+  - Allows more precise control over test conditions
+  - Example:
+  ```typescript
+  // Direct controller test
+  it('should get user achievements', async () => {
+    const controller = new AchievementController();
+    const req = { user: { _id: userId } } as unknown as Request;
+    const res = createMockResponse();
+    
+    await controller.getUserAchievements(req, res);
+    
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalled();
+  });
+  ```
+
+#### Connection Lifecycle Management
+
+- **Explicitly connect and disconnect** for each test suite
+  - Use `connectToTestDB()` in `beforeAll`
+  - Use `closeTestDB()` in `afterAll`
+  - Add small delays between operations to prevent race conditions
+  - Example:
+  ```typescript
+  beforeAll(async () => {
+    await connectToTestDB();
+    // Setup other test resources
+  });
+
+  afterAll(async () => {
+    // Clean up test resources
+    await clearTestData();
+    
+    // Add small delay to prevent race conditions
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    await closeTestDB();
+  });
+  ```
+
+#### Connection Debugging
+
+- **Add connection state logging** for troubleshooting
+  - Track MongoDB connection state
+  - Monitor open connection count
+  - Use consistent logging patterns
+  - Example:
+  ```typescript
+  const logConnectionState = async (label: string) => {
+    const state = mongoose.connection.readyState;
+    const stateMap: Record<number, string> = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting',
+    };
+    
+    console.log(`[${label}] Connection state: ${stateMap[state] || state}`);
+    const openConnections = mongoose.connections.length;
+    console.log(`[${label}] Open connections: ${openConnections}`);
+  };
+  ```
+
+#### Mock Response Pattern
+
+- **Use a consistent mock response factory** for controller tests
+  - Create chainable mock responses
+  - Include status, json, and send methods
+  - Example:
+  ```typescript
+  const createMockResponse = () => {
+    const res: Partial<Response> = {
+      status: jest.fn(() => res as any),
+      json: jest.fn(),
+      send: jest.fn(),
+    };
+    return res as Response;
+  };
+  ```
+
+#### Advanced Connection Troubleshooting
+
+- **Diagnose connection leaks**
+  - Look for tests that create connections but don't close them
+  - Check for missing `await` on async cleanup functions
+  - Identify controller functions that don't properly handle errors
+  - Example cleanup logic with verification:
+  ```typescript
+  afterAll(async () => {
+    // Verify no open handles before disconnection
+    const handles = process._getActiveHandles();
+    console.log(`Active handles before disconnect: ${handles.length}`);
+    
+    // Close database connection
+    await closeTestDB();
+    
+    // Verify cleanup was successful
+    const handlesAfter = process._getActiveHandles();
+    console.log(`Active handles after disconnect: ${handlesAfter.length}`);
+  });
+  ```
+
+#### Testing Express Controllers Directly
+
+- **Mock the Express Request and Response objects**
+  - Avoid the overhead of network requests
+  - Eliminate potential socket/connection leaks
+  - Test controller logic in isolation
+  - Example mocking approach:
+  ```typescript
+  // Create mock request
+  const createMockRequest = (userId: string, params = {}, body = {}) => {
+    return {
+      user: { _id: userId },
+      params,
+      body,
+      query: {}
+    } as unknown as Request;
+  };
+  
+  // Mock controller test
+  it('should update user preferences', async () => {
+    const controller = new UserController();
+    const req = createMockRequest(testUserId, {}, { 
+      theme: 'dark',
+      notifications: true 
+    });
+    const res = createMockResponse();
+    
+    await controller.updatePreferences(req, res);
+    
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalled();
+    
+    // Verify database was updated
+    const user = await User.findById(testUserId);
+    expect(user.preferences.theme).toBe('dark');
+    expect(user.preferences.notifications).toBe(true);
+  });
+  ```
+
+#### Middleware Mocking Best Practices
+
+- **Mock authentication middleware** to avoid token generation/validation overhead
+  - Simulate authenticated requests without JWT complexity
+  - Bypass authorization checks for testing core logic
+  - Example:
+  ```typescript
+  jest.mock('../../middleware/auth.middleware', () => {
+    return {
+      authenticateToken: jest.fn((req, res, next) => {
+        console.log('Mock auth middleware called');
+        req.user = { _id: testUserId, username: 'testuser' };
+        next();
+      }),
+      validateRequest: jest.fn((req, res, next) => {
+        console.log('Mock validation middleware called');
+        next();
+      })
+    };
+  });
+  ```
+
+#### Performance Optimization Tips
+
+- **Use shorter timeouts** for faster feedback
+  - Default to 5-10 seconds instead of 30+ seconds
+  - Helps identify slow tests more quickly
+  - Example:
+  ```typescript
+  // Set at top of test file
+  jest.setTimeout(5000);
+  
+  // For specific longer tests
+  it('should handle a complex operation', async () => {
+    // Test logic
+  }, 10000);
+  ```
+
+- **Use test helper modules** for standard operations
+  - Create reusable test data generators
+  - Implement standard database operations
+  - Example test helper:
+  ```typescript
+  // src/__tests__/helpers/achievement-test.helpers.ts
+  export const createTestAchievement = async (userId, options = {}) => {
+    const defaultOptions = {
+      title: 'Test Achievement',
+      description: 'Achievement for testing',
+      category: 'test',
+      dateEarned: new Date(),
+      // other defaults
+    };
+    
+    const achievementData = { ...defaultOptions, ...options, userId };
+    const achievement = new Achievement(achievementData);
+    await achievement.save();
+    return achievement;
+  };
+  ```
+
+#### Template For New Test Files
+
+We've created a standardized template for new test files that implements these best practices. See the [MongoDB Test Template](../guides/mongodb-test-template.md) for a complete example that you can copy and adapt for your tests.
+
 ### Test Data Management
 - Use factory functions from `test-utils.ts` for creating test data
 - Create unique test data per test
@@ -655,6 +869,216 @@ it('should compare ObjectIds correctly', async () => {
   expect(found._id.toString()).toBe(resource._id.toString());
 });
 ```
+
+## Test Coverage
+
+- Aim for at least 80% code coverage for all modules
+- Critical paths should have 100% coverage
+- Track coverage using Jest coverage report
+- Require high coverage for new features before merge
+- Coverage reports are generated after running tests with coverage flag
+
+## Error Handling in Tests
+
+### Error Response Format
+
+The platform uses a standardized structured error format:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error message",
+    "category": "ERROR_CATEGORY",
+    "timestamp": "ISO timestamp",
+    "requestId": "Request ID if available",
+    "details": { ... },
+    "userMessage": "User-friendly message"
+  }
+}
+```
+
+### Testing Error Scenarios
+
+When testing error scenarios, follow these standards:
+
+1. **Use the compatibility utilities**: 
+   - Import from `src/__tests__/helpers/error-compatibility.helpers.ts`
+   - Use `verifyErrorResponse` to check error response structure
+   - Use `createTestErrorResponse` to create expected error responses
+
+2. **Test both happy and error paths**:
+   - Each endpoint should have tests for successful operations
+   - Each endpoint should also have tests for relevant error scenarios
+   - Test validation errors, authentication errors, and business logic errors
+
+3. **Test error status codes**:
+   - Verify that the appropriate HTTP status code is returned
+   - Use constants from `HTTP_STATUS` when possible
+
+4. **Test error codes and categories**:
+   - Verify that the error code matches the expected error type
+   - Use constants from `ErrorCodes` and `ErrorCategory` enums
+
+### Error Test Examples
+
+For detailed examples of testing error scenarios, refer to:
+- [Error Compatibility Example](src/__tests__/examples/error-compatibility-example.test.ts)
+- [Error Handling Test Migration Guide](project-planning/testing/error-handling-test-migration.md)
+
+## Test Naming
+
+- Use descriptive names for test suites and test cases
+- Follow the pattern: `describe('[Component Name]', () => {...})`
+- Name test cases with "should" format: `it('should do something', () => {...})`
+
+### Mandatory Validation Testing Requirements
+
+Based on our experience with the meditation controller tests, we've established these mandatory validation requirements:
+
+#### Controller Tests Must Include:
+
+1. **Request Body Validation**
+   - Empty request body handling
+   - Invalid field validation
+   - Type validation for all fields
+   - Required field validation
+   - Example:
+   ```typescript
+   describe('updateResource', () => {
+     it('should handle empty request body', async () => {
+       // Test empty body
+     });
+     it('should handle invalid fields', async () => {
+       // Test invalid fields
+     });
+   });
+   ```
+
+2. **Type Safety Validation**
+   - Validate all type definitions are correct
+   - Ensure mock objects match interface requirements
+   - Test type coercion edge cases
+   - Example:
+   ```typescript
+   const mockUser = {
+     _id: new Types.ObjectId().toString(),
+     username: 'testuser'
+   };
+   ```
+
+3. **Service Method Validation**
+   - Verify service method calls with correct parameters
+   - Validate return types match expectations
+   - Test error handling paths
+   - Example:
+   ```typescript
+   expect(mockService.method).toHaveBeenCalledWith(
+     expect.objectContaining({
+       expectedField: expectedValue
+     })
+   );
+   ```
+
+4. **Mock Implementation Verification**
+   - Verify mock implementations match real service behavior
+   - Test mock return values and error cases
+   - Ensure mocks are reset between tests
+   - Example:
+   ```typescript
+   beforeEach(() => {
+     jest.spyOn(Service, 'method')
+       .mockImplementation(async () => expectedResult);
+   });
+   ```
+
+#### Test Implementation Process
+
+1. Write failing test first (TDD)
+2. Run tests to catch type errors
+3. Fix type errors
+4. Run tests to catch mock/implementation issues
+5. Fix mock/implementation issues
+6. Verify all tests pass
+7. Only then move to the next feature
+
+#### Common Validation Patterns
+
+1. **Request Validation**
+```typescript
+describe('Request Validation', () => {
+  it('should validate empty request body', async () => {
+    mockRequest.body = {};
+    await controller.method(mockRequest, mockResponse);
+    expect(mockResponse.status).toHaveBeenCalledWith(400);
+  });
+
+  it('should validate invalid fields', async () => {
+    mockRequest.body = { invalidField: 'value' };
+    await controller.method(mockRequest, mockResponse);
+    expect(mockResponse.status).toHaveBeenCalledWith(400);
+  });
+});
+```
+
+2. **Type Validation**
+```typescript
+describe('Type Validation', () => {
+  it('should validate correct types', async () => {
+    const validData = {
+      stringField: 'string',
+      numberField: 123,
+      dateField: new Date()
+    };
+    await controller.method(mockRequest, mockResponse);
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+  });
+
+  it('should reject invalid types', async () => {
+    const invalidData = {
+      stringField: 123, // Should be string
+      numberField: 'invalid', // Should be number
+    };
+    await controller.method(mockRequest, mockResponse);
+    expect(mockResponse.status).toHaveBeenCalledWith(400);
+  });
+});
+```
+
+3. **Service Integration**
+```typescript
+describe('Service Integration', () => {
+  it('should properly integrate with service', async () => {
+    const serviceResult = { success: true };
+    mockService.method.mockResolvedValue(serviceResult);
+    await controller.method(mockRequest, mockResponse);
+    expect(mockService.method).toHaveBeenCalledWith(
+      expect.objectContaining(expectedParams)
+    );
+  });
+
+  it('should handle service errors', async () => {
+    mockService.method.mockRejectedValue(new Error('Service error'));
+    await controller.method(mockRequest, mockResponse);
+    expect(mockResponse.status).toHaveBeenCalledWith(500);
+  });
+});
+```
+
+#### Validation Checklist
+
+Before marking tests as complete:
+
+- [ ] Empty request body validation
+- [ ] Invalid fields validation
+- [ ] Type safety checks
+- [ ] Service method validation
+- [ ] Mock implementation verification
+- [ ] Error handling paths
+- [ ] Edge cases covered
+- [ ] All tests passing
+- [ ] No type errors
+- [ ] Clean test output
 
 ---
 

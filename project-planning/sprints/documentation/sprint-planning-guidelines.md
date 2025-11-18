@@ -60,6 +60,81 @@ When planning each sprint, follow these steps to ensure testing principles are i
    - Ensure all new features have comprehensive tests following the established principles
    - Require documentation for any new skipped tests
 
+## Design Pattern Integration
+
+When planning each sprint, ensure proper integration of our core design patterns:
+
+### 1. Base Class Implementation
+
+For any new features or components:
+
+1. **Controller Development**
+   - All new controllers must extend `BaseController`
+   - Document any custom methods beyond base CRUD
+   - Ensure proper error handling inheritance
+   - Test both inherited and custom behavior
+
+2. **Service Layer**
+   - All new services must extend `BaseService`
+   - Keep business logic separate from data access
+   - Document service-specific methods
+   - Test service layer comprehensively
+
+3. **Route Configuration**
+   - Use `RouteRegistrationFactory` for all routes
+   - Follow standard middleware patterns
+   - Document route dependencies
+   - Test route registration and behavior
+
+### 2. Pattern Compliance Checklist
+
+For each sprint task:
+
+- [ ] Identify applicable base classes
+- [ ] Plan inheritance relationships
+- [ ] Document composition patterns
+- [ ] Consider test utility needs
+- [ ] Review error handling strategy
+- [ ] Plan type safety approach
+
+### 3. Test Pattern Integration
+
+When planning tests:
+
+1. **Base Class Testing**
+   - Test inherited behavior first
+   - Verify custom method implementations
+   - Use test utility composition
+   - Document test patterns
+
+2. **Test Utilities**
+   - Use shared database utilities
+   - Implement request testing helpers
+   - Create mock factories as needed
+   - Document utility usage
+
+## Implementation Guidelines
+
+### Feature Development Process
+
+1. **Pattern Analysis**
+   - Review Design Patterns Guide
+   - Identify reusable components
+   - Plan inheritance structure
+   - Document pattern decisions
+
+2. **Component Development**
+   - Extend appropriate base classes
+   - Implement required interfaces
+   - Follow composition patterns
+   - Add type safety measures
+
+3. **Testing Approach**
+   - Use test utility composition
+   - Test inherited behavior
+   - Verify custom functionality
+   - Document test patterns
+
 ## Backend Development Guidelines
 
 ### Feature Implementation
@@ -137,10 +212,23 @@ Each sprint must include:
    - Update test documentation for modified features
    - Document any skipped tests with clear explanations
 
-3. **Sprint Review**
+3. **Pattern Documentation**
+   - Document pattern usage
+   - Explain inheritance relationships
+   - Detail composition structures
+   - Update pattern guides
+
+4. **Test Documentation**
+   - Document test patterns
+   - Update utility usage
+   - Explain test composition
+   - Track pattern coverage
+
+5. **Sprint Review**
+   - Evaluate pattern effectiveness
+   - Identify improvement areas
+   - Update pattern guidelines
    - Document lessons learned
-   - Identify areas for improvement
-   - Update these guidelines as needed
 
 ## Continuous Improvement
 

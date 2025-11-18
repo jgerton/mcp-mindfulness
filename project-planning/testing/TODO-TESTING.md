@@ -119,7 +119,7 @@ Based on our analysis, the following documents need to be updated with our lesso
 - **Estimated effort**: 3 hours
 - **Specific updates**:
   - Add a new section titled "API Error Response Standards" around line 195 (after the existing Error Handling section)
-  - Enhance the "Database Handling" section around line 155 with MongoDB connection best practices
+  - Enhance the "Database Handling" section around line 155 with MongoDB connection best practices from our `project-planning/guides/mongodb-connection-guide.md`
   - Add a new section titled "Authentication & Authorization Testing" after the WebSocket Tests section
   - Add a new section titled "Test Lifecycle Management" before the "Best Practices" section
 
